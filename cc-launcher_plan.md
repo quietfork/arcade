@@ -46,6 +46,7 @@
 | 1.19 | 2026-05-07 | quietfork | Phase 5.1 微調整。 (1) Explorer のルート定義を「登録プロジェクト全体」→「**focused pane の cwd 1 つだけ**」に変更。フォーカス切替時に root も切り替わるが、ツリーの開閉状態は path ベースの module-level store (`fileTreeStore.ts`) に保持されるので、戻ってきたら復元される。`hasOpenState` 追加で root のデフォルト展開を実装。 (2) FileTreeNode に open + children=null 時の auto-load を追加。 (3) Terminal `start()` に **term identity 検証**を追加(StrictMode の cleanup-during-init レース対策。1 つ目のペインが split 後に入力不能になる症状を修正)。 (4) ExplorerView / FileTreeNode のキャッシュ + 開閉状態がタブ切替で消えない構造に変更(`useState` 初期値で store からハイドレート)。 |
 | 1.20 | 2026-05-07 | quietfork | **FR-NEW-12 Markdown Reader** を Phase 5.1 に追加実装。Explorer で `.md` / `.markdown` をクリック → workspace 右側に Reader パネルを開く(Claude Desktop 風)。`MarkdownReader.tsx` 新規(`react-markdown@8` + `remark-gfm@3` で GFM 対応)、`file_browser.go` に `ReadFile` (5MB 上限 + 拡張子 allowlist) 追加。Reader は最小幅 280px / 最大 900px のドラッグリサイズ可。閉じるボタン / Copy path / Reveal in Explorer。 |
 | 1.21 | 2026-05-07 | quietfork | **Phase 6 計画策定** (実装は別ブランチ `feature/multi-window`)。マルチウィンドウ対応の方針を VSCode の main process パターンを参考に「single-writer / slot 方式」で確定(改訂プラン H)。Wails v2 の制約上 1 プロセス複数ウィンドウは不可なので、**マルチプロセス + slot ID で state 隔離 + main slot 単一 writer + fsnotify 自動同期** で同等の体験を実現する設計に。 |
+| 1.22 | 2026-05-07 | quietfork | **Phase 6 実装完了**(`feature/multi-window` ブランチ、コミット ee1502d → fc51984、計 8 タスク)。FR-NEW-13〜20 全タスク完了 + 各タスク単位で commit。バックエンド: `slot.go` / `lock.go` / `migration.go` / `watcher.go` / `spawn_{windows,unix}.go` 新規 + `project_store.go` / `settings_store.go` / `layout_store.go` / `app.go` / `main.go` 改修。フロントエンド: `NewWindowDialog.tsx` 新規 + `TitleBar.tsx` / `ProjectsView.tsx` / `WorkspaceView.tsx` / `App.tsx` 改修。テスト 28 件追加(ValidateSlotName / migration / lock / watcher / promotion 系)。**残り**: ユーザーレビュー + 実機での 2 ウィンドウ動作確認(プロセス分離 / 双方向同期 / promotion / lock 衝突拒否)。 |
 
 ---
 
@@ -61,7 +62,7 @@
 | Phase 4 | 任意機能 | ⏸ 一旦保留(FR-403 完了、残: FR-105 / FR-106 / FR-404) | 1〜2 日 |
 | Phase 5 | VSCode 風サイドバー化(Activity Bar + ビュー切替 + パスコピー) | ⚠ 設計差し戻し → Phase 5.1 へ | 0.7〜0.9 日 |
 | Phase 5.1 | Workspace + Explorer ビュー再構成 + Markdown Reader | ✅ 完了 | 0.7〜1.0 日 |
-| Phase 6 | マルチウィンドウ対応(slot 方式 / VSCode 風 single-writer) | 🔜 着手予定(`feature/multi-window` ブランチ) | 約 1.5 日 |
+| Phase 6 | マルチウィンドウ対応(slot 方式 / VSCode 風 single-writer) | ✅ コード完了(`feature/multi-window` ブランチ、レビュー待ち) | 約 1.5 日 |
 
 合計: **MVP まで約 2.5 日 / 完成版まで約 5〜6 日**(要件定義書 10 章と整合)
 
@@ -494,26 +495,26 @@ VSCode は Electron で「**1 プロセス + 複数 renderer**」で実現して
 
 ### 8.7.3 タスク
 
-- [ ] **FR-NEW-13 CLI フラグ + slot 識別**
+- [x] **FR-NEW-13 CLI フラグ + slot 識別**
   - `main.go` で `flag.String("slot", "main", "...")` を解析
   - slot 名バリデーション: `^[A-Za-z0-9_-]{1,32}$` + Windows 予約語 (`CON/PRN/NUL/AUX/COM1-9/LPT1-9`) ブラックリスト
   - 違反時は起動拒否 + エラー表示
   - **工数**: 0.15 日
 
-- [ ] **FR-NEW-14 LayoutStore の slot 対応**
+- [x] **FR-NEW-14 LayoutStore の slot 対応**
   - 保存先: `~/.cc-launcher/slots/<slot>/layout.json`
   - 名前付きレイアウト(FR-403)も同 slot 配下に
   - **マイグレーション**: 既存 `~/.cc-launcher/layouts.json` → `slots/main/layout.json`(初回起動時、global lock で保護)
   - **工数**: 0.3 日
 
-- [ ] **FR-NEW-15 Settings の user-level / slot-level 分離**
+- [x] **FR-NEW-15 Settings の user-level / slot-level 分離**
   - `~/.cc-launcher/settings.json`(共有): `theme` / `fontFamily` / `fontSize` / `lineHeight` / `scrollback` / `defaultCommand` / `defaultArgs` / `dangerousConsent`
   - `~/.cc-launcher/slots/<slot>/slot-settings.json`(slot 固有): `sidebarHidden` / `activeView`
   - フロントの `LoadSettings` は両方読んでマージして返す
   - 保存時: writer 権限の有無で振り分け(slot-level は常に書ける、user-level は main slot のみ)
   - **工数**: 0.2 日
 
-- [ ] **FR-NEW-16′ Lock + writer 権限管理**(統合タスク)
+- [x] **FR-NEW-16′ Lock + writer 権限管理**(統合タスク)
   - lock ファイル形式: `{ pid, startTime, executablePath, slot }` の JSON
   - 起動時に既存 lock の生存確認:
     - PID 生存 + start time 一致 + exe path 一致 → 同 slot 二重起動 → **起動拒否**
@@ -525,7 +526,7 @@ VSCode は Electron で「**1 プロセス + 複数 renderer**」で実現して
   - OnShutdown で自 slot lock を削除
   - **工数**: 0.3 日
 
-- [ ] **FR-NEW-17 fsnotify による自動同期 + echo loop 防止**
+- [x] **FR-NEW-17 fsnotify による自動同期 + echo loop 防止**
   - `projects.json` / `settings.json` を `fsnotify` で監視
   - 変更検知 → 再読み込み → Wails イベント `projects:changed` / `settings:changed` 発火
   - **content-hash dedupe**: 自分の書き込みを再ロードしたとき、内容が同じなら no-op(echo ループ防止)
@@ -533,13 +534,13 @@ VSCode は Electron で「**1 プロセス + 複数 renderer**」で実現して
   - **fsnotify 失敗時のフォールバック**: 30 秒に 1 回 mtime ポーリング(VM 共有 FS / OneDrive 等の flaky 環境向け)
   - **工数**: 0.3 日
 
-- [ ] **FR-NEW-18 TitleBar に slot 名 + role 表示**
+- [x] **FR-NEW-18 TitleBar に slot 名 + role 表示**
   - 表示: `cc-launcher · multiplex · slot:main · writer · 3 panes`
   - reader slot の場合は `slot:second · reader` のようにロール明示
   - reader 状態のときは projects 編集ボタンを **無効化 + ツールチップで案内**
   - **工数**: 0.1 日
 
-- [ ] **FR-NEW-19 「新しいウィンドウを開く」ボタン**(detached 子プロセス)
+- [x] **FR-NEW-19 「新しいウィンドウを開く」ボタン**(detached 子プロセス)
   - タイトルバーに ⊞ アイコン追加
   - 押下 → slot 名入力ダイアログ → `os.Executable()` でバイナリパス取得 → 別プロセスとして起動
   - OS 別 detach:
@@ -550,7 +551,7 @@ VSCode は Electron で「**1 プロセス + 複数 renderer**」で実現して
   - dev モードでは「production ビルドのみで動作」と注意表示
   - **工数**: 0.25 日
 
-- [ ] **FR-NEW-20 main slot 落下時の自動昇格**
+- [x] **FR-NEW-20 main slot 落下時の自動昇格**
   - 各 reader slot は 5 秒に 1 回、main slot lock の生存をチェック
   - 死んでいたら **自分が main lock を奪取**(レース対策で `O_EXCL` 相当のアトミック作成)
   - 奪取成功した slot の TitleBar は `reader` → `writer` に変わる(リアルタイム)
