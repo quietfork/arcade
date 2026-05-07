@@ -1,0 +1,48 @@
+# ── Build artifacts ──────────────────────────────────────────
+# Wails compiled binaries
+cc-launcher/build/bin/
+cc-launcher/*.exe
+
+# Frontend build outputs
+cc-launcher/frontend/dist/
+cc-launcher/frontend/.vite/
+
+# Frontend dependencies (restored via `npm install`)
+cc-launcher/frontend/node_modules/
+
+# Wails embed checksum (regenerated)
+cc-launcher/frontend/package.json.md5
+
+# Note: cc-launcher/frontend/wailsjs/ IS tracked (Go bindings).
+
+# ── Go ───────────────────────────────────────────────────────
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# ── Editor / IDE ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ── Logs / temp ──────────────────────────────────────────────
+*.log
+*.tmp
+
+# ── Local config / secrets ───────────────────────────────────
+.env
+.env.local
+*.local
+
+# ── Claude Code local settings ───────────────────────────────
+.claude/settings.local.json

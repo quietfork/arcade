@@ -1,0 +1,120 @@
+// Mock data for sessions, tasks, workspaces
+
+const WORKSPACES = [
+  { id: 'ws1', name: 'multiplex',     count: 4 },
+  { id: 'ws2', name: 'api-gateway',   count: 2 },
+  { id: 'ws3', name: 'design-system', count: 1 },
+  { id: 'ws4', name: 'sandbox',       count: 1 },
+];
+
+// Status: 'idle' | 'run' | 'done' | 'err'
+const SESSIONS = [
+  {
+    id: 's1',
+    name: 'refactor router',
+    cwd: '~/code/multiplex/internal/router',
+    branch: 'feat/router-split',
+    status: 'run',
+    elapsed: '02:14',
+    tokens: '24.1k',
+    workspace: 'ws1',
+    activeTask: 'Editing handler.go (3 of 7)',
+    body: 'body_run',
+  },
+  {
+    id: 's2',
+    name: 'add tests for auth',
+    cwd: '~/code/multiplex/internal/auth',
+    branch: 'feat/auth-tests',
+    status: 'idle',
+    elapsed: '—',
+    tokens: '8.2k',
+    workspace: 'ws1',
+    activeTask: null,
+    body: 'body_idle',
+  },
+  {
+    id: 's3',
+    name: 'pty bridge',
+    cwd: '~/code/multiplex/internal/pty',
+    branch: 'main',
+    status: 'done',
+    elapsed: '14:02',
+    tokens: '61.8k',
+    workspace: 'ws1',
+    activeTask: null,
+    body: 'body_done',
+  },
+  {
+    id: 's4',
+    name: 'window chrome',
+    cwd: '~/code/multiplex/frontend/src/chrome',
+    branch: 'feat/chrome',
+    status: 'run',
+    elapsed: '00:42',
+    tokens: '11.4k',
+    workspace: 'ws1',
+    activeTask: 'Reading TitleBar.tsx',
+    body: 'body_run2',
+  },
+  {
+    id: 's5',
+    name: 'rate-limit middleware',
+    cwd: '~/code/api-gateway/middleware',
+    branch: 'feat/rate-limit',
+    status: 'idle',
+    elapsed: '—',
+    tokens: '2.0k',
+    workspace: 'ws2',
+    activeTask: null,
+    body: 'body_idle',
+  },
+  {
+    id: 's6',
+    name: 'fix flaky e2e',
+    cwd: '~/code/api-gateway/e2e',
+    branch: 'fix/flaky-e2e',
+    status: 'err',
+    elapsed: '08:20',
+    tokens: '38.7k',
+    workspace: 'ws2',
+    activeTask: 'Awaiting confirmation',
+    body: 'body_err',
+  },
+  {
+    id: 's7',
+    name: 'tokens audit',
+    cwd: '~/code/design-system/tokens',
+    branch: 'main',
+    status: 'idle',
+    elapsed: '—',
+    tokens: '0',
+    workspace: 'ws3',
+    activeTask: null,
+    body: 'body_idle',
+  },
+  {
+    id: 's8',
+    name: 'scratch',
+    cwd: '~/code/sandbox',
+    branch: 'main',
+    status: 'idle',
+    elapsed: '—',
+    tokens: '0',
+    workspace: 'ws4',
+    activeTask: null,
+    body: 'body_idle',
+  },
+];
+
+const TASKS = [
+  { id: 't1', sess: 's1', label: 'Edit internal/router/handler.go',  step: '3/7',  state: 'run',  age: 'now' },
+  { id: 't2', sess: 's4', label: 'Read frontend/src/chrome/TitleBar.tsx', step: '1/1', state: 'run', age: '12s' },
+  { id: 't3', sess: 's6', label: 'Bash: pnpm test:e2e --filter auth', step: '—',  state: 'wait',  age: '32s' },
+  { id: 't4', sess: 's3', label: 'Write internal/pty/bridge_test.go', step: '6/6',  state: 'done', age: '4m' },
+  { id: 't5', sess: 's3', label: 'Bash: go test ./internal/pty/...', step: '—',   state: 'done', age: '5m' },
+];
+
+window.WORKSPACES = WORKSPACES;
+window.SESSIONS = SESSIONS;
+window.TASKS = TASKS;
