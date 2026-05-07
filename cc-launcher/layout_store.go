@@ -60,14 +60,17 @@ type layoutsFile struct {
 	Named   []LayoutSnapshot `json:"named,omitempty"`
 }
 
-// LayoutStore persists the layout JSON under ~/.cc-launcher.
+// LayoutStore persists the layout JSON under ~/.cc-launcher/slots/<slot>/.
+// Each slot has its own layout state — pane arrangements are intentionally
+// per-window, not shared (see Phase 6 plan §8.7.2).
 type LayoutStore struct {
 	mu   sync.Mutex
+	slot *Slot
 	path string
 }
 
-func NewLayoutStore() *LayoutStore {
-	return &LayoutStore{}
+func NewLayoutStore(slot *Slot) *LayoutStore {
+	return &LayoutStore{slot: slot}
 }
 
 func (s *LayoutStore) ensurePath() (string, error) {
@@ -78,11 +81,11 @@ func (s *LayoutStore) ensurePath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("UserHomeDir: %w", err)
 	}
-	dir := filepath.Join(home, ".cc-launcher")
+	dir := filepath.Join(home, ".cc-launcher", "slots", s.slot.Name)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("MkdirAll: %w", err)
 	}
-	s.path = filepath.Join(dir, "layouts.json")
+	s.path = filepath.Join(dir, "layout.json")
 	return s.path, nil
 }
 

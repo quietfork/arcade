@@ -31,11 +31,18 @@ func main() {
 		title = fmt.Sprintf("cc-launcher · %s", slot.Name)
 	}
 
+	// Migrate pre-Phase-6 ~/.cc-launcher/layouts.json into the per-slot
+	// layout path. Failure is logged but non-fatal — the user just starts
+	// from an empty layout, which is recoverable.
+	if err := migrateLayoutsToMainSlot(); err != nil {
+		fmt.Fprintf(os.Stderr, "cc-launcher: layout migration warning: %v\n", err)
+	}
+
 	app := NewApp()
 	ptyMgr := NewPtyManager()
 	clipboard := NewClipboardService()
 	projects := NewProjectStore()
-	layouts := NewLayoutStore()
+	layouts := NewLayoutStore(slot)
 	settings := NewSettingsStore()
 	fileBrowser := NewFileBrowser()
 
