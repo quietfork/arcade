@@ -40,10 +40,18 @@ func main() {
 		fmt.Fprintf(os.Stderr, "cc-launcher: settings migration warning: %v\n", err)
 	}
 
-	app := NewApp()
+	// Acquire the slot's lock and determine writer/reader role. A fresh
+	// lock on the same slot means another instance is alive — refuse to
+	// start so the two windows don't fight over the same slot's storage.
+	if err := slot.AcquireLocksAndDetermineRole(); err != nil {
+		fmt.Fprintf(os.Stderr, "cc-launcher: %v\n", err)
+		os.Exit(3)
+	}
+
+	app := NewApp(slot)
 	ptyMgr := NewPtyManager()
 	clipboard := NewClipboardService()
-	projects := NewProjectStore()
+	projects := NewProjectStore(slot)
 	layouts := NewLayoutStore(slot)
 	settings := NewSettingsStore(slot)
 	fileBrowser := NewFileBrowser()
@@ -71,6 +79,7 @@ func main() {
 		},
 		OnShutdown: func(ctx context.Context) {
 			ptyMgr.Shutdown()
+			slot.Release()
 		},
 		Bind: []interface{}{
 			app,

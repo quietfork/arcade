@@ -7,6 +7,7 @@ import (
 func TestSettingsStore_LoadDefaults(t *testing.T) {
 	withTempHome(t, func(home string) {
 		slot, _ := NewSlot("main")
+		slot.Role = RoleWriter
 		s := NewSettingsStore(slot)
 		got, err := s.Load()
 		if err != nil {
@@ -27,6 +28,7 @@ func TestSettingsStore_LoadDefaults(t *testing.T) {
 func TestSettingsStore_RoundTripSplit(t *testing.T) {
 	withTempHome(t, func(home string) {
 		slot, _ := NewSlot("second")
+		slot.Role = RoleWriter // grant writer for the round-trip test
 		s := NewSettingsStore(slot)
 
 		want := Settings{
@@ -61,7 +63,9 @@ func TestSettingsStore_SlotIsolation(t *testing.T) {
 	// Two slots share user-level settings but have independent slot-level state.
 	withTempHome(t, func(home string) {
 		slotA, _ := NewSlot("main")
+		slotA.Role = RoleWriter
 		slotB, _ := NewSlot("second")
+		slotB.Role = RoleReader // realistic: only main is writer
 		a := NewSettingsStore(slotA)
 		b := NewSettingsStore(slotB)
 

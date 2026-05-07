@@ -11,12 +11,33 @@ import (
 
 // App is the lifecycle struct that hosts the Wails context and exposes
 // window-control bindings (needed because the window is frameless).
+// Phase 6 also routes slot identity / role queries through here so the
+// TitleBar can render a slot indicator.
 type App struct {
-	ctx context.Context
+	ctx  context.Context
+	slot *Slot
 }
 
-func NewApp() *App {
-	return &App{}
+func NewApp(slot *Slot) *App {
+	return &App{slot: slot}
+}
+
+// GetSlot returns the slot name this window is bound to (e.g. "main",
+// "second"). Used by TitleBar to render the slot indicator.
+func (a *App) GetSlot() string {
+	if a.slot == nil {
+		return "main"
+	}
+	return a.slot.Name
+}
+
+// GetSlotRole returns "writer" or "reader". Frontend disables shared-state
+// editing (project list, theme, consent) when this is "reader".
+func (a *App) GetSlotRole() string {
+	if a.slot == nil {
+		return string(RoleWriter)
+	}
+	return string(a.slot.Role)
 }
 
 func (a *App) startup(ctx context.Context) {

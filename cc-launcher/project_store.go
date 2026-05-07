@@ -41,16 +41,27 @@ type ProjectInput struct {
 }
 
 // ProjectStore persists the project catalog as JSON under ~/.cc-launcher.
+// Phase 6: projects.json is shared across all slots; only the writer slot
+// (the one holding ~/.cc-launcher/slots/main/lock.json) may mutate it.
+// Reader slots fall back to read-only methods (List, ListWithStatus).
 type ProjectStore struct {
 	ctx      context.Context
 	mu       sync.Mutex
+	slot     *Slot
 	path     string
 	projects []Project
 	loaded   bool
 }
 
-func NewProjectStore() *ProjectStore {
-	return &ProjectStore{}
+func NewProjectStore(slot *Slot) *ProjectStore {
+	return &ProjectStore{slot: slot}
+}
+
+// readOnlyError is returned by mutating methods when the current slot
+// doesn't hold writer role. Frontend will surface this as a toast
+// suggesting the user switch to the main window.
+func (s *ProjectStore) readOnlyError() error {
+	return fmt.Errorf("slot %q is reader-only; project changes must be made from the main window", s.slot.Name)
 }
 
 func (s *ProjectStore) setContext(ctx context.Context) {
@@ -169,6 +180,9 @@ func (s *ProjectStore) ListWithStatus() ([]ProjectStatus, error) {
 
 // Add registers a new project.
 func (s *ProjectStore) Add(in ProjectInput) (Project, error) {
+	if !s.slot.IsWriter() {
+		return Project{}, s.readOnlyError()
+	}
 	if in.Name == "" {
 		return Project{}, fmt.Errorf("name is required")
 	}
@@ -208,6 +222,9 @@ func (s *ProjectStore) Add(in ProjectInput) (Project, error) {
 
 // Update modifies fields on an existing project.
 func (s *ProjectStore) Update(id string, in ProjectInput) (Project, error) {
+	if !s.slot.IsWriter() {
+		return Project{}, s.readOnlyError()
+	}
 	if in.Name == "" {
 		return Project{}, fmt.Errorf("name is required")
 	}
@@ -253,6 +270,9 @@ func (s *ProjectStore) Update(id string, in ProjectInput) (Project, error) {
 
 // Delete removes a project from the catalog (does not touch the directory).
 func (s *ProjectStore) Delete(id string) error {
+	if !s.slot.IsWriter() {
+		return s.readOnlyError()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.load(); err != nil {
@@ -273,7 +293,12 @@ func (s *ProjectStore) Delete(id string) error {
 }
 
 // MarkUsed updates the lastUsedAt timestamp (used after launching a session).
+// Reader slots silently no-op rather than erroring — launching from a reader
+// slot is normal usage; the lastUsedAt counter is best-effort metadata.
 func (s *ProjectStore) MarkUsed(id string) error {
+	if !s.slot.IsWriter() {
+		return nil
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.load(); err != nil {

@@ -6,14 +6,72 @@ import (
 	"strings"
 )
 
+// SlotRole determines whether this process may write to shared state
+// (projects.json, user-level settings.json). The main slot is always
+// writer; other slots start as reader and may auto-promote later
+// (FR-NEW-20) if the main slot lock goes stale.
+type SlotRole string
+
+const (
+	RoleWriter SlotRole = "writer"
+	RoleReader SlotRole = "reader"
+)
+
 // Slot identifies a single cc-launcher window instance for multi-window state
 // isolation. Each running process is tied to one slot; the slot name is used
 // as a key in lock files and per-slot storage paths under
 // ~/.cc-launcher/slots/<name>/.
 //
-// FR-NEW-16′ will extend this struct with lock + writer-role state.
+// Role/Lock are zero-valued until AcquireLocksAndDetermineRole runs.
 type Slot struct {
 	Name string
+	Role SlotRole
+	Lock *SlotLock
+}
+
+// IsWriter reports whether this slot may write shared (user-level) state.
+// Slot-level state (its own layout, slot-settings) is always writable.
+func (s *Slot) IsWriter() bool {
+	return s.Role == RoleWriter
+}
+
+// AcquireLocksAndDetermineRole takes the slot's own lock, then decides the
+// role. main slot is always writer; for other slots, role depends on
+// whether the main slot already has a live writer.
+func (s *Slot) AcquireLocksAndDetermineRole() error {
+	lock, err := AcquireSlotLock(s.Name)
+	if err != nil {
+		return err
+	}
+	s.Lock = lock
+
+	if s.Name == "main" {
+		s.Role = RoleWriter
+		return nil
+	}
+
+	fresh, err := IsMainSlotLockFresh()
+	if err != nil {
+		// Treat unknown as reader — safer to under-claim than over-write.
+		s.Role = RoleReader
+		return nil
+	}
+	if fresh {
+		s.Role = RoleReader
+	} else {
+		// Main slot lock is missing or stale. We *could* promote ourselves
+		// here, but FR-NEW-20 owns that loop — keep this commit's scope
+		// focused on initial role determination only.
+		s.Role = RoleReader
+	}
+	return nil
+}
+
+// Release frees the slot's lock. Safe to call multiple times.
+func (s *Slot) Release() {
+	if s.Lock != nil {
+		s.Lock.Release()
+	}
 }
 
 // slotNameRegex enforces the slot-name shape: 1-32 chars, ASCII letters,

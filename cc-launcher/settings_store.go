@@ -200,26 +200,30 @@ func (s *SettingsStore) loadSlotLocked() (SlotSettings, error) {
 }
 
 // Save replaces both files atomically. Splits the merged Settings struct
-// into its user-level and slot-level components.
+// into its user-level and slot-level components. Reader slots silently skip
+// the user-level write (they can't change shared preferences); slot-level
+// state is always writable.
 func (s *SettingsStore) Save(in Settings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := UserSettings{
-		Theme:            in.Theme,
-		FontFamily:       in.FontFamily,
-		FontSize:         in.FontSize,
-		LineHeight:       in.LineHeight,
-		DefaultCommand:   in.DefaultCommand,
-		DefaultArgs:      in.DefaultArgs,
-		Scrollback:       in.Scrollback,
-		DangerousConsent: in.DangerousConsent,
+	if s.slot.IsWriter() {
+		u := UserSettings{
+			Theme:            in.Theme,
+			FontFamily:       in.FontFamily,
+			FontSize:         in.FontSize,
+			LineHeight:       in.LineHeight,
+			DefaultCommand:   in.DefaultCommand,
+			DefaultArgs:      in.DefaultArgs,
+			Scrollback:       in.Scrollback,
+			DangerousConsent: in.DangerousConsent,
+		}
+		if err := s.saveUserLocked(u); err != nil {
+			return err
+		}
 	}
 	sl := SlotSettings{
 		SidebarHidden: in.SidebarHidden,
 		ActiveView:    in.ActiveView,
-	}
-	if err := s.saveUserLocked(u); err != nil {
-		return err
 	}
 	return s.saveSlotLocked(sl)
 }
@@ -262,10 +266,14 @@ func writeJSONAtomic(path string, v interface{}) error {
 }
 
 // SetTheme is a convenience updater (used by the title bar's theme toggle).
-// User-level — FR-NEW-16′ will gate this on writer role.
+// User-level: only the writer slot may change it. Reader slots get a clear
+// error so the UI can fall back to "ask the main window".
 func (s *SettingsStore) SetTheme(theme string) error {
 	if theme != "dark" && theme != "light" {
 		return fmt.Errorf("invalid theme %q", theme)
+	}
+	if !s.slot.IsWriter() {
+		return fmt.Errorf("slot %q is reader-only; theme can only be changed from the main window", s.slot.Name)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -275,8 +283,11 @@ func (s *SettingsStore) SetTheme(theme string) error {
 }
 
 // SetConsent records the user's consent to launching with --dangerously-skip-permissions.
-// User-level.
+// User-level — same writer-only gate as SetTheme.
 func (s *SettingsStore) SetConsent(v bool) error {
+	if !s.slot.IsWriter() {
+		return fmt.Errorf("slot %q is reader-only; consent can only be granted from the main window", s.slot.Name)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cur, _ := s.loadUserLocked()
