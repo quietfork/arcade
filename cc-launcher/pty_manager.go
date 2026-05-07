@@ -4,13 +4,54 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/aymanbagabas/go-pty"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// childEnv returns the env to hand to the PTY child process. Inherits the
+// parent's os.Environ() and overlays the variables every modern TTY app
+// expects:
+//
+//   - TERM=xterm-256color: tells the child it is an interactive xterm-class
+//     terminal. Without it Claude Code (and other Ink/blessed-style TUIs)
+//     fall back to a "dumb" rendering — no welcome banner, no 2-column
+//     tips/what's-new layout, no fancy spinners.
+//   - COLORTERM=truecolor: enables 24-bit color output. xterm.js handles
+//     truecolor natively; without this many TUIs cap themselves at 256.
+//
+// Inheriting os.Environ() preserves user-set vars (PATH, HOME, USERPROFILE,
+// CLAUDE_CODE_*, etc.) so the child sees the same world as if launched
+// from PowerShell.
+func childEnv() []string {
+	env := os.Environ()
+	overrides := map[string]string{
+		"TERM":      "xterm-256color",
+		"COLORTERM": "truecolor",
+	}
+	keep := env[:0]
+	for _, kv := range env {
+		eq := strings.IndexByte(kv, '=')
+		if eq <= 0 {
+			keep = append(keep, kv)
+			continue
+		}
+		key := kv[:eq]
+		if _, ok := overrides[key]; ok {
+			continue // dropped; we'll re-add below
+		}
+		keep = append(keep, kv)
+	}
+	for k, v := range overrides {
+		keep = append(keep, k+"="+v)
+	}
+	return keep
+}
 
 // session represents a single PTY-driven Claude Code process.
 type session struct {
@@ -70,6 +111,7 @@ func (m *PtyManager) StartSession(command string, args []string, cwd string, col
 	if cwd != "" {
 		cmd.Dir = cwd
 	}
+	cmd.Env = childEnv()
 	if err := cmd.Start(); err != nil {
 		_ = p.Close()
 		return "", fmt.Errorf("cmd.Start: %w", err)

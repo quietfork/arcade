@@ -408,9 +408,10 @@ func (s *ProjectStore) handleExternalChange() {
 	}
 	s.projects = f.Projects
 	s.lastHash = hash
+	ctxAlive := s.ctx != nil
 	s.mu.Unlock()
 
-	if s.ctx != nil {
+	if ctxAlive {
 		wruntime.EventsEmit(s.ctx, "projects:changed")
 	}
 }
