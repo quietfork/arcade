@@ -11,6 +11,12 @@ export const Icon = {
     Plus: () => (
         <svg {...svgProps}><path d="M6 2v8M2 6h8" /></svg>
     ),
+    NewWindow: () => (
+        <svg {...svgProps}>
+            <rect x="1.5" y="2.5" width="6" height="6" />
+            <path d="M5 5l4-2v6l-4-2" />
+        </svg>
+    ),
     X: () => (
         <svg {...svgProps}><path d="M3 3l6 6M9 3l-6 6" /></svg>
     ),

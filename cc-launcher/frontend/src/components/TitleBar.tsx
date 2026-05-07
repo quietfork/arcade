@@ -13,6 +13,7 @@ export interface TitleBarProps {
     onToggleTheme: () => void;
     onOpenSettings: () => void;
     onOpenLayouts: (anchor: HTMLElement) => void;
+    onOpenNewWindow: () => void;
 }
 
 export function TitleBar({
@@ -25,6 +26,7 @@ export function TitleBar({
     onToggleTheme,
     onOpenSettings,
     onOpenLayouts,
+    onOpenNewWindow,
 }: TitleBarProps) {
     const isReader = slotRole === 'reader';
     const themeDisabled = isReader;
@@ -56,6 +58,13 @@ export function TitleBar({
                 )} · {paneCount} pane{paneCount === 1 ? '' : 's'}
             </div>
             <div className="titlebar-actions">
+                <button
+                    className="tb-btn"
+                    onClick={onOpenNewWindow}
+                    title="Open new window (separate slot)"
+                >
+                    <Icon.NewWindow />
+                </button>
                 <button
                     className="tb-btn"
                     onClick={(e) => onOpenLayouts(e.currentTarget)}

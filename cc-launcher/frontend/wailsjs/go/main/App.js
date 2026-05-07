@@ -10,6 +10,10 @@ export function GetSlotRole() {
   return window['go']['main']['App']['GetSlotRole']();
 }
 
+export function OpenNewWindow(arg1) {
+  return window['go']['main']['App']['OpenNewWindow'](arg1);
+}
+
 export function PlatformName() {
   return window['go']['main']['App']['PlatformName']();
 }

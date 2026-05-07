@@ -5,6 +5,8 @@ export function GetSlot():Promise<string>;
 
 export function GetSlotRole():Promise<string>;
 
+export function OpenNewWindow(arg1:string):Promise<void>;
+
 export function PlatformName():Promise<string>;
 
 export function RevealInExplorer(arg1:string):Promise<void>;

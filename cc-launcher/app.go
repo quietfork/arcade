@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 
@@ -96,4 +97,39 @@ func (a *App) RevealInExplorer(path string) error {
 // (e.g. hide "Reveal in Explorer" if the menu item label only fits Windows).
 func (a *App) PlatformName() string {
 	return runtime.GOOS
+}
+
+// OpenNewWindow spawns a fresh cc-launcher process bound to a different
+// slot name. The child is detached (its own process group, separate
+// console on Windows) so closing this window doesn't take it down.
+//
+// The child runs the same binary at os.Executable(), which means dev-mode
+// `wails dev` builds will spawn the dev binary too — but Vite's HMR is
+// tied to the parent's frontend dev server, so the child's UI may not
+// hot-reload. Frontend warns about this; production builds work fully.
+//
+// If the requested slot is already in use, the child will exit with
+// code 3 ("slot already in use, pid=N"); the parent doesn't wait for
+// the child, so this surfaces as a missing-window symptom rather than
+// an immediate error here.
+func (a *App) OpenNewWindow(slotName string) error {
+	if err := ValidateSlotName(slotName); err != nil {
+		return err
+	}
+	if a.slot != nil && a.slot.Name == slotName {
+		return fmt.Errorf("slot %q is already this window", slotName)
+	}
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("os.Executable: %w", err)
+	}
+	cmd := exec.Command(exePath, "-slot", slotName)
+	setupCmdDetached(cmd)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("spawn: %w", err)
+	}
+	// We intentionally don't Wait() — the child is now independent.
+	// Release any goroutine state Go has tracking the cmd.
+	go func() { _ = cmd.Wait() }()
+	return nil
 }

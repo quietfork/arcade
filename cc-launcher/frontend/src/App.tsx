@@ -15,6 +15,7 @@ import { ConsentDialog } from './components/ConsentDialog';
 import { LayoutsMenu } from './components/LayoutsMenu';
 import { Toast } from './components/Toast';
 import { MarkdownReader } from './components/MarkdownReader';
+import { NewWindowDialog } from './components/NewWindowDialog';
 import {
     Node, DropZone, Path,
     appendLeaf, removeLeaf, moveLeaf, updateRatioAtPath, leafIds, deserialize, serialize,
@@ -23,7 +24,7 @@ import {
 import { Add, MarkUsed, Update } from '../wailsjs/go/main/ProjectStore';
 import { LoadDefault, SaveDefault, SaveNamed } from '../wailsjs/go/main/LayoutStore';
 import { Load as LoadSettings, SetTheme, SetSidebarState } from '../wailsjs/go/main/SettingsStore';
-import { GetSlot, GetSlotRole, PlatformName, RevealInExplorer } from '../wailsjs/go/main/App';
+import { GetSlot, GetSlotRole, OpenNewWindow, PlatformName, RevealInExplorer } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import { main } from '../wailsjs/go/models';
 
@@ -73,6 +74,7 @@ function App() {
     const [platform, setPlatform] = useState<string>('');
     const [slotName, setSlotName] = useState<string>('main');
     const [slotRole, setSlotRole] = useState<SlotRole>('writer');
+    const [newWindowOpen, setNewWindowOpen] = useState(false);
     const [readerPath, setReaderPath] = useState<string | null>(null);
     const [readerWidth, setReaderWidth] = useState<number>(520);
     const readerResizeRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -668,6 +670,7 @@ function App() {
                 onToggleTheme={toggleTheme}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenLayouts={(el) => setLayoutsAnchor(el)}
+                onOpenNewWindow={() => setNewWindowOpen(true)}
             />
 
             {bootNotices.length > 0 && (
@@ -893,6 +896,21 @@ function App() {
                     onAccept={() => {
                         setNeedsConsent(false);
                         setSettings((s) => s ? { ...s, dangerousConsent: true } : s);
+                    }}
+                />
+            )}
+
+            {newWindowOpen && (
+                <NewWindowDialog
+                    onClose={() => setNewWindowOpen(false)}
+                    onSubmit={async (name) => {
+                        setNewWindowOpen(false);
+                        try {
+                            await OpenNewWindow(name);
+                            setToast(`Opening window for slot "${name}"…`);
+                        } catch (err: any) {
+                            setToast(`Failed to open window: ${err?.message ?? String(err)}`);
+                        }
                     }}
                 />
             )}
