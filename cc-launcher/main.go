@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"embed"
+	"flag"
+	"fmt"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -14,6 +17,20 @@ import (
 var assets embed.FS
 
 func main() {
+	slotName := flag.String("slot", "main", "Slot name for multi-window state isolation (1-32 chars, [A-Za-z0-9_-])")
+	flag.Parse()
+
+	slot, err := NewSlot(*slotName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cc-launcher: %v\n", err)
+		os.Exit(2)
+	}
+
+	title := "cc-launcher"
+	if slot.Name != "main" {
+		title = fmt.Sprintf("cc-launcher · %s", slot.Name)
+	}
+
 	app := NewApp()
 	ptyMgr := NewPtyManager()
 	clipboard := NewClipboardService()
@@ -22,8 +39,8 @@ func main() {
 	settings := NewSettingsStore()
 	fileBrowser := NewFileBrowser()
 
-	err := wails.Run(&options.App{
-		Title:     "cc-launcher",
+	err = wails.Run(&options.App{
+		Title:     title,
 		Width:     1280,
 		Height:    800,
 		MinWidth:  800,
