@@ -143,9 +143,19 @@ function App() {
                 })
                 .catch(() => undefined);
         });
+        // Reader slots receive this when they auto-promote (FR-NEW-20).
+        EventsOn('slot:role-changed', (role: string) => {
+            if (role === 'writer' || role === 'reader') {
+                setSlotRole(role);
+                if (role === 'writer') {
+                    setToast('This window is now the writer (main window exited).');
+                }
+            }
+        });
         return () => {
             EventsOff('projects:changed');
             EventsOff('settings:changed');
+            EventsOff('slot:role-changed');
         };
     }, []);
 

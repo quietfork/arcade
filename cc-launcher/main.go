@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -81,6 +82,12 @@ func main() {
 			// so handlers can emit Wails events.
 			projects.StartWatcher()
 			settings.StartWatcher()
+			// Reader slots: poll for main-slot death so we can promote.
+			// Fires `slot:role-changed` so the TitleBar updates instantly
+			// and ProjectsView/SettingsDialog re-enable their controls.
+			slot.StartPromotionLoop(func() {
+				wruntime.EventsEmit(ctx, "slot:role-changed", string(slot.Role))
+			})
 		},
 		OnShutdown: func(ctx context.Context) {
 			projects.StopWatcher()

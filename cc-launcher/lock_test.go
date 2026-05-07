@@ -105,6 +105,99 @@ func TestSlot_AcquireLocksAndDetermineRole_MainIsWriter(t *testing.T) {
 	})
 }
 
+func TestSlot_TryPromote_PromotesWhenMainStale(t *testing.T) {
+	withTempHome(t, func(home string) {
+		// Simulate a dead main slot: a stale lock file with old mtime.
+		mainDir := filepath.Join(home, ".cc-launcher", "slots", "main")
+		if err := os.MkdirAll(mainDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		mainLockPath := filepath.Join(mainDir, "lock.json")
+		if err := os.WriteFile(mainLockPath, []byte(`{"pid":99999,"slot":"main"}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		old := time.Now().Add(-2 * heartbeatStaleTTL)
+		if err := os.Chtimes(mainLockPath, old, old); err != nil {
+			t.Fatal(err)
+		}
+
+		second, _ := NewSlot("second")
+		if err := second.AcquireLocksAndDetermineRole(); err != nil {
+			t.Fatal(err)
+		}
+		defer second.Release()
+		if second.Role != RoleReader {
+			t.Fatalf("expected reader before promote, got %q", second.Role)
+		}
+
+		second.tryPromote()
+
+		if second.Role != RoleWriter {
+			t.Errorf("expected writer after tryPromote, got %q", second.Role)
+		}
+		if second.mainLock == nil {
+			t.Error("mainLock should be non-nil after promotion")
+		}
+	})
+}
+
+func TestSlot_TryPromote_NoOpWhenMainAlive(t *testing.T) {
+	withTempHome(t, func(home string) {
+		main, _ := NewSlot("main")
+		if err := main.AcquireLocksAndDetermineRole(); err != nil {
+			t.Fatal(err)
+		}
+		defer main.Release()
+
+		second, _ := NewSlot("second")
+		if err := second.AcquireLocksAndDetermineRole(); err != nil {
+			t.Fatal(err)
+		}
+		defer second.Release()
+
+		second.tryPromote()
+
+		if second.Role != RoleReader {
+			t.Errorf("should not promote while main alive, role=%q", second.Role)
+		}
+	})
+}
+
+func TestSlot_TryPromote_FiresOnRoleChangeOnce(t *testing.T) {
+	withTempHome(t, func(home string) {
+		// Stale main lock.
+		mainDir := filepath.Join(home, ".cc-launcher", "slots", "main")
+		if err := os.MkdirAll(mainDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		p := filepath.Join(mainDir, "lock.json")
+		if err := os.WriteFile(p, []byte(`{}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		old := time.Now().Add(-2 * heartbeatStaleTTL)
+		_ = os.Chtimes(p, old, old)
+
+		second, _ := NewSlot("second")
+		if err := second.AcquireLocksAndDetermineRole(); err != nil {
+			t.Fatal(err)
+		}
+		defer second.Release()
+
+		var fires int
+		second.mu.Lock()
+		second.onRoleChange = func() { fires++ }
+		second.mu.Unlock()
+
+		second.tryPromote()
+		// Calling again — still writer, must NOT fire onRoleChange again.
+		second.tryPromote()
+
+		if fires != 1 {
+			t.Errorf("onRoleChange fired %d times, want 1", fires)
+		}
+	})
+}
+
 func TestSlot_AcquireLocksAndDetermineRole_SecondIsReaderWhenMainAlive(t *testing.T) {
 	withTempHome(t, func(home string) {
 		// Plant a fresh main lock to simulate the writer being alive.
