@@ -6,6 +6,7 @@ import { ContextMenu, ContextMenuItem } from './ContextMenu';
 
 export interface ProjectsViewProps {
     refreshKey: number;
+    readOnly?: boolean;
     onLaunch: (project: main.Project) => void;
     onAddClick: () => void;
     onEditClick: (project: main.Project) => void;
@@ -16,6 +17,7 @@ export interface ProjectsViewProps {
 
 export function ProjectsView({
     refreshKey,
+    readOnly = false,
     onLaunch,
     onAddClick,
     onEditClick,
@@ -81,12 +83,14 @@ export function ProjectsView({
                 label: 'Edit…',
                 icon: <Icon.Edit />,
                 onClick: () => onEditClick(p),
+                disabled: readOnly,
             },
             {
                 label: 'Delete',
                 icon: <Icon.X />,
                 onClick: () => void remove(p),
                 danger: true,
+                disabled: readOnly,
             },
         );
         return items;
@@ -96,7 +100,11 @@ export function ProjectsView({
         <div className="view-section">
             <div className="view-head">
                 <span>projects · {items.length}</span>
-                <button onClick={onAddClick} title="Add project">+</button>
+                <button
+                    onClick={onAddClick}
+                    title={readOnly ? 'Projects can only be added from the main window' : 'Add project'}
+                    disabled={readOnly}
+                >+</button>
             </div>
             {error && <div className="sidebar-error">{error}</div>}
             <div className="project-list">
@@ -122,13 +130,19 @@ export function ProjectsView({
                             {it.project.name}
                         </button>
                         <div className="project-actions">
-                            <button className="icon-btn" title="Edit" onClick={() => onEditClick(it.project)}>
+                            <button
+                                className="icon-btn"
+                                title={readOnly ? 'Edit only available in main window' : 'Edit'}
+                                onClick={() => onEditClick(it.project)}
+                                disabled={readOnly}
+                            >
                                 <Icon.Edit />
                             </button>
                             <button
                                 className="icon-btn icon-danger"
-                                title="Delete"
+                                title={readOnly ? 'Delete only available in main window' : 'Delete'}
                                 onClick={() => void remove(it.project)}
+                                disabled={readOnly}
                             >
                                 <Icon.X />
                             </button>

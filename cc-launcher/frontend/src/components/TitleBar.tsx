@@ -1,10 +1,14 @@
 import { Icon } from './Icons';
 import { WindowMinimise, WindowToggleMaximise, WindowQuit } from '../../wailsjs/go/main/App';
 
+export type SlotRole = 'writer' | 'reader' | '';
+
 export interface TitleBarProps {
     paneCount: number;
     theme: 'dark' | 'light';
     sidebarVisible: boolean;
+    slotName: string;
+    slotRole: SlotRole;
     onToggleSidebar: () => void;
     onToggleTheme: () => void;
     onOpenSettings: () => void;
@@ -15,11 +19,19 @@ export function TitleBar({
     paneCount,
     theme,
     sidebarVisible,
+    slotName,
+    slotRole,
     onToggleSidebar,
     onToggleTheme,
     onOpenSettings,
     onOpenLayouts,
 }: TitleBarProps) {
+    const isReader = slotRole === 'reader';
+    const themeDisabled = isReader;
+    const themeTitle = isReader
+        ? 'Theme can only be changed from the main window'
+        : `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
+
     return (
         <div className="titlebar">
             <div className="titlebar-left">
@@ -32,7 +44,16 @@ export function TitleBar({
                 </button>
             </div>
             <div className="title-text mono">
-                cc-launcher · <b>multiplex</b> · {paneCount} pane{paneCount === 1 ? '' : 's'}
+                cc-launcher · <b>multiplex</b> · slot:{slotName}
+                {slotRole && (
+                    <span className={`slot-role role-${slotRole}`} title={
+                        slotRole === 'writer'
+                            ? 'This window owns shared state (projects, theme).'
+                            : 'Read-only window — shared state is owned by the main window.'
+                    }>
+                        {' · '}{slotRole}
+                    </span>
+                )} · {paneCount} pane{paneCount === 1 ? '' : 's'}
             </div>
             <div className="titlebar-actions">
                 <button
@@ -46,9 +67,10 @@ export function TitleBar({
                     settings
                 </button>
                 <button
-                    className="tb-btn"
-                    onClick={onToggleTheme}
-                    title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                    className={`tb-btn ${themeDisabled ? 'is-disabled' : ''}`}
+                    onClick={themeDisabled ? undefined : onToggleTheme}
+                    title={themeTitle}
+                    disabled={themeDisabled}
                 >
                     {theme === 'dark' ? <Icon.Sun /> : <Icon.Moon />}
                     {theme}

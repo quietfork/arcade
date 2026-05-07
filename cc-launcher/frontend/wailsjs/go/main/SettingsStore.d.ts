@@ -11,3 +11,7 @@ export function SetConsent(arg1:boolean):Promise<void>;
 export function SetSidebarState(arg1:boolean,arg2:string):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
+
+export function StartWatcher():Promise<void>;
+
+export function StopWatcher():Promise<void>;

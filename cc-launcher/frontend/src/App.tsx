@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
-import { TitleBar } from './components/TitleBar';
+import { TitleBar, SlotRole } from './components/TitleBar';
 import { StatusBar } from './components/StatusBar';
 import { ActivityBar, SidebarView } from './components/ActivityBar';
 import { WorkspaceView, ActivePaneItem } from './components/WorkspaceView';
@@ -23,7 +23,8 @@ import {
 import { Add, MarkUsed, Update } from '../wailsjs/go/main/ProjectStore';
 import { LoadDefault, SaveDefault, SaveNamed } from '../wailsjs/go/main/LayoutStore';
 import { Load as LoadSettings, SetTheme, SetSidebarState } from '../wailsjs/go/main/SettingsStore';
-import { PlatformName, RevealInExplorer } from '../wailsjs/go/main/App';
+import { GetSlot, GetSlotRole, PlatformName, RevealInExplorer } from '../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import { main } from '../wailsjs/go/models';
 
 const DEFAULT_COMMAND = 'claude';
@@ -70,6 +71,8 @@ function App() {
     const [activeView, setActiveView] = useState<SidebarView>('workspace');
     const [toast, setToast] = useState<string | null>(null);
     const [platform, setPlatform] = useState<string>('');
+    const [slotName, setSlotName] = useState<string>('main');
+    const [slotRole, setSlotRole] = useState<SlotRole>('writer');
     const [readerPath, setReaderPath] = useState<string | null>(null);
     const [readerWidth, setReaderWidth] = useState<number>(520);
     const readerResizeRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -115,6 +118,33 @@ function App() {
                 }
             });
         PlatformName().then(setPlatform).catch(() => undefined);
+        GetSlot().then(setSlotName).catch(() => undefined);
+        GetSlotRole()
+            .then((r) => {
+                if (r === 'writer' || r === 'reader') setSlotRole(r);
+            })
+            .catch(() => undefined);
+    }, []);
+
+    // Cross-slot sync: when another window writes shared state, the backend
+    // emits these events. Refresh the affected UI without a manual reload.
+    useEffect(() => {
+        EventsOn('projects:changed', () => {
+            setRefreshKey((n) => n + 1);
+        });
+        EventsOn('settings:changed', () => {
+            LoadSettings()
+                .then((s) => {
+                    if (!s) return;
+                    setSettings(s);
+                    if (s.theme === 'light' || s.theme === 'dark') setThemeState(s.theme as Theme);
+                })
+                .catch(() => undefined);
+        });
+        return () => {
+            EventsOff('projects:changed');
+            EventsOff('settings:changed');
+        };
     }, []);
 
     // Persist sidebar visibility / active view (debounced).
@@ -557,6 +587,10 @@ function App() {
     };
 
     const toggleTheme = async () => {
+        if (slotRole === 'reader') {
+            setToast('Theme can only be changed from the main window.');
+            return;
+        }
         const next: Theme = theme === 'dark' ? 'light' : 'dark';
         setThemeState(next);
         try { await SetTheme(next); } catch (err) { console.error('save theme failed', err); }
@@ -628,6 +662,8 @@ function App() {
                 paneCount={paneIds.length}
                 theme={theme}
                 sidebarVisible={sidebarVisible}
+                slotName={slotName}
+                slotRole={slotRole}
                 onToggleSidebar={() => setSidebarVisible((v) => !v)}
                 onToggleTheme={toggleTheme}
                 onOpenSettings={() => setSettingsOpen(true)}
@@ -662,6 +698,7 @@ function App() {
                         {activeView === 'workspace' && (
                             <WorkspaceView
                                 refreshKey={refreshKey}
+                                readOnly={slotRole === 'reader'}
                                 onLaunch={launchProject}
                                 onAddClick={() => setDialog({ mode: 'add' })}
                                 onEditClick={(p) => setDialog({ mode: 'edit', project: p })}

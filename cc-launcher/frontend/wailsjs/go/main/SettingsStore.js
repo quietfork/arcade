@@ -21,3 +21,11 @@ export function SetSidebarState(arg1, arg2) {
 export function SetTheme(arg1) {
   return window['go']['main']['SettingsStore']['SetTheme'](arg1);
 }
+
+export function StartWatcher() {
+  return window['go']['main']['SettingsStore']['StartWatcher']();
+}
+
+export function StopWatcher() {
+  return window['go']['main']['SettingsStore']['StopWatcher']();
+}

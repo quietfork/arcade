@@ -26,6 +26,14 @@ export function PickDirectory(arg1) {
   return window['go']['main']['ProjectStore']['PickDirectory'](arg1);
 }
 
+export function StartWatcher() {
+  return window['go']['main']['ProjectStore']['StartWatcher']();
+}
+
+export function StopWatcher() {
+  return window['go']['main']['ProjectStore']['StopWatcher']();
+}
+
 export function Update(arg1, arg2) {
   return window['go']['main']['ProjectStore']['Update'](arg1, arg2);
 }

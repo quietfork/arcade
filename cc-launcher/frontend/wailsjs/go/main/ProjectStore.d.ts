@@ -14,4 +14,8 @@ export function MarkUsed(arg1:string):Promise<void>;
 
 export function PickDirectory(arg1:string):Promise<string>;
 
+export function StartWatcher():Promise<void>;
+
+export function StopWatcher():Promise<void>;
+
 export function Update(arg1:string,arg2:main.ProjectInput):Promise<main.Project>;

@@ -99,6 +99,20 @@ button {
     text-align: center;
 }
 .title-text b { color: var(--fg-1); font-weight: 500; }
+.slot-role { font-weight: 500; }
+.slot-role.role-writer { color: #6ab04c; }
+.slot-role.role-reader { color: #e1b12c; }
+.tb-btn.is-disabled,
+.tb-btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.tb-btn.is-disabled:hover,
+.tb-btn[disabled]:hover {
+    background: transparent;
+    border-color: transparent;
+    color: var(--fg-1);
+}
 
 .titlebar-actions { display: flex; gap: 2px; }
 .tb-btn {

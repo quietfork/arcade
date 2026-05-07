@@ -16,6 +16,7 @@ export interface ActivePaneItem {
 
 export interface WorkspaceViewProps {
     refreshKey: number;
+    readOnly?: boolean;
     onLaunch: (project: main.Project) => void;
     onAddClick: () => void;
     onEditClick: (project: main.Project) => void;
@@ -30,6 +31,7 @@ export interface WorkspaceViewProps {
 
 export function WorkspaceView({
     refreshKey,
+    readOnly = false,
     onLaunch,
     onAddClick,
     onEditClick,
@@ -89,6 +91,7 @@ export function WorkspaceView({
         <div className="workspace-view">
             <ProjectsView
                 refreshKey={refreshKey}
+                readOnly={readOnly}
                 onLaunch={onLaunch}
                 onAddClick={onAddClick}
                 onEditClick={onEditClick}
