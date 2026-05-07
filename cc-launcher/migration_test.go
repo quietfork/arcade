@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -93,6 +94,108 @@ func TestMigrateLayoutsToMainSlot_AlreadyMigrated(t *testing.T) {
 		}
 		if string(data) != `{"existing":true}` {
 			t.Fatalf("new file was overwritten: %q", data)
+		}
+	})
+}
+
+func TestMigrateSettingsToSplit_NoLegacyFile(t *testing.T) {
+	withTempHome(t, func(home string) {
+		if err := migrateSettingsToSplit(); err != nil {
+			t.Fatalf("expected nil for missing legacy: %v", err)
+		}
+	})
+}
+
+func TestMigrateSettingsToSplit_AlreadyV2(t *testing.T) {
+	withTempHome(t, func(home string) {
+		base := filepath.Join(home, ".cc-launcher")
+		if err := os.MkdirAll(base, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		// v2 file shouldn't be touched.
+		settingsPath := filepath.Join(base, "settings.json")
+		original := `{"version":2,"settings":{"theme":"light"}}`
+		if err := os.WriteFile(settingsPath, []byte(original), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := migrateSettingsToSplit(); err != nil {
+			t.Fatalf("migrate: %v", err)
+		}
+		got, err := os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != original {
+			t.Errorf("v2 file was modified: %q", got)
+		}
+		// No slot file should be created.
+		slotPath := filepath.Join(base, "slots", "main", "slot-settings.json")
+		if _, err := os.Stat(slotPath); !os.IsNotExist(err) {
+			t.Errorf("slot file unexpectedly created: %v", err)
+		}
+	})
+}
+
+func TestMigrateSettingsToSplit_SplitsV1(t *testing.T) {
+	withTempHome(t, func(home string) {
+		base := filepath.Join(home, ".cc-launcher")
+		if err := os.MkdirAll(base, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		legacy := `{
+			"version": 1,
+			"settings": {
+				"theme": "light",
+				"fontSize": 14,
+				"defaultCommand": "claude",
+				"defaultArgs": ["--dangerously-skip-permissions"],
+				"scrollback": 8000,
+				"dangerousConsent": true,
+				"sidebarHidden": true,
+				"activeView": "explorer"
+			}
+		}`
+		settingsPath := filepath.Join(base, "settings.json")
+		if err := os.WriteFile(settingsPath, []byte(legacy), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := migrateSettingsToSplit(); err != nil {
+			t.Fatalf("migrate: %v", err)
+		}
+
+		// User file: version 2, no slot fields.
+		userBytes, err := os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var userF userSettingsFile
+		if err := json.Unmarshal(userBytes, &userF); err != nil {
+			t.Fatal(err)
+		}
+		if userF.Version != 2 {
+			t.Errorf("user version=%d want 2", userF.Version)
+		}
+		if userF.Settings.Theme != "light" || userF.Settings.FontSize != 14 ||
+			userF.Settings.Scrollback != 8000 || !userF.Settings.DangerousConsent {
+			t.Errorf("user settings not preserved: %+v", userF.Settings)
+		}
+
+		// Slot file: written under main, contains the extracted fields.
+		slotPath := filepath.Join(base, "slots", "main", "slot-settings.json")
+		slotBytes, err := os.ReadFile(slotPath)
+		if err != nil {
+			t.Fatalf("slot file missing: %v", err)
+		}
+		var slotF slotSettingsFile
+		if err := json.Unmarshal(slotBytes, &slotF); err != nil {
+			t.Fatal(err)
+		}
+		if slotF.Version != 1 {
+			t.Errorf("slot version=%d want 1", slotF.Version)
+		}
+		if !slotF.Settings.SidebarHidden || slotF.Settings.ActiveView != "explorer" {
+			t.Errorf("slot fields not extracted: %+v", slotF.Settings)
 		}
 	})
 }
