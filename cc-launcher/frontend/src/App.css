@@ -268,6 +268,17 @@ button {
     padding: 0; display: grid; place-items: center;
 }
 .view-head button:hover { color: var(--fg-0); border-color: var(--fg-2); }
+.view-head button:disabled,
+.view-head button[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    color: var(--fg-2);
+}
+.view-head button:disabled:hover,
+.view-head button[disabled]:hover {
+    color: var(--fg-2);
+    border-color: var(--line-2);
+}
 
 /* ───── Workspace view (Projects + Active Panes pair) ───── */
 
@@ -512,6 +523,24 @@ button {
 }
 .icon-btn:hover { color: var(--fg-0); background: var(--bg-3); border-color: var(--line); }
 .icon-danger:hover { background: #b91c1c; color: white; border-color: #b91c1c; }
+.icon-btn:disabled,
+.icon-btn[disabled] {
+    opacity: 0.35;
+    cursor: not-allowed;
+    color: var(--fg-3);
+}
+.icon-btn:disabled:hover,
+.icon-btn[disabled]:hover {
+    background: transparent;
+    border-color: transparent;
+    color: var(--fg-3);
+}
+.icon-danger:disabled:hover,
+.icon-danger[disabled]:hover {
+    background: transparent;
+    border-color: transparent;
+    color: var(--fg-3);
+}
 
 .project-empty {
     color: var(--fg-3);
@@ -915,6 +944,12 @@ button {
     flex: 1; min-height: 0;
     background: var(--bg-0);
     overflow: hidden;
+    /* Windows Terminal-style breathing room around the xterm canvas.
+       Without this the cell grid sits flush against the pane border and
+       feels cramped (especially on the left edge). xterm fit() reads
+       getBoundingClientRect() on .terminal-host so the inner area is the
+       padded box and cols/rows shrink slightly to fit. */
+    padding: 4px 8px;
 }
 
 .terminal-host {
