@@ -43,7 +43,8 @@ type ProjectInput struct {
 // ProjectStore persists the project catalog as JSON under ~/.cc-launcher.
 // Phase 6: projects.json is shared across all slots; only the writer slot
 // (the one holding ~/.cc-launcher/slots/main/lock.json) may mutate it.
-// Reader slots fall back to read-only methods (List, ListWithStatus).
+// Reader slots fall back to read-only methods (List, ListWithStatus) and
+// receive `projects:changed` events when the writer modifies the file.
 type ProjectStore struct {
 	ctx      context.Context
 	mu       sync.Mutex
@@ -51,6 +52,12 @@ type ProjectStore struct {
 	path     string
 	projects []Project
 	loaded   bool
+	// lastHash is the SHA-256 of whatever bytes we most recently wrote or
+	// loaded. The watcher uses it to skip "echo" events triggered by our
+	// own atomic-rename writes (the fsnotify event arrives ~ms after the
+	// rename, so without dedupe every save triggers a self-emit).
+	lastHash string
+	watcher  *FileWatcher
 }
 
 func NewProjectStore(slot *Slot) *ProjectStore {
@@ -102,6 +109,7 @@ func (s *ProjectStore) load() error {
 		if os.IsNotExist(err) {
 			s.projects = []Project{}
 			s.loaded = true
+			s.lastHash = contentHash(nil)
 			return nil
 		}
 		return fmt.Errorf("ReadFile: %w", err)
@@ -112,10 +120,12 @@ func (s *ProjectStore) load() error {
 		_ = os.Rename(path, path+".bak")
 		s.projects = []Project{}
 		s.loaded = true
+		s.lastHash = contentHash(nil)
 		return fmt.Errorf("projects.json corrupt (renamed to .bak): %w", err)
 	}
 	s.projects = f.Projects
 	s.loaded = true
+	s.lastHash = contentHash(data)
 	return nil
 }
 
@@ -137,6 +147,7 @@ func (s *ProjectStore) saveLocked() error {
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("Rename: %w", err)
 	}
+	s.lastHash = contentHash(data)
 	return nil
 }
 
@@ -330,3 +341,76 @@ func (s *ProjectStore) PickDirectory(defaultPath string) (string, error) {
 // ensures projects are sorted (registration order — currently a no-op kept
 // for forward-compat with FR-105 reorder feature).
 var _ = sort.Slice
+
+// StartWatcher begins watching projects.json for changes from other slots
+// and emits the `projects:changed` Wails event when external writes
+// arrive. Must be called after setContext (the Wails ctx must be alive
+// before we can emit). No-op on stores without a writer slot — actually,
+// readers benefit from this most: writers receive their own echoes which
+// dedupe filters out.
+func (s *ProjectStore) StartWatcher() {
+	if s.ctx == nil {
+		return
+	}
+	s.mu.Lock()
+	if s.watcher != nil {
+		s.mu.Unlock()
+		return
+	}
+	path, err := s.ensurePath()
+	if err != nil {
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+
+	w := NewFileWatcher(path, s.handleExternalChange)
+	s.watcher = w
+	w.Start()
+}
+
+// StopWatcher halts the file watcher. Idempotent.
+func (s *ProjectStore) StopWatcher() {
+	if s.watcher != nil {
+		s.watcher.Stop()
+		s.watcher = nil
+	}
+}
+
+// handleExternalChange is the watcher callback. Re-reads the file; if the
+// content hash differs from what we last wrote, treats it as an external
+// update — refresh in-memory state and emit `projects:changed` so the
+// frontend re-renders the sidebar.
+func (s *ProjectStore) handleExternalChange() {
+	s.mu.Lock()
+	path, err := s.ensurePath()
+	if err != nil {
+		s.mu.Unlock()
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// File deleted or transient ENOENT during atomic rename — nothing
+		// to do. Next event will catch the new content.
+		s.mu.Unlock()
+		return
+	}
+	hash := contentHash(data)
+	if hash == s.lastHash {
+		// Echo of our own write.
+		s.mu.Unlock()
+		return
+	}
+	var f projectsFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		s.mu.Unlock()
+		return
+	}
+	s.projects = f.Projects
+	s.lastHash = hash
+	s.mu.Unlock()
+
+	if s.ctx != nil {
+		wruntime.EventsEmit(s.ctx, "projects:changed")
+	}
+}

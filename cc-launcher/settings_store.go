@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // userSettingsSchemaVersion bumped to 2 in Phase 6 when sidebar/active-view
@@ -99,14 +102,25 @@ type slotSettingsFile struct {
 // SettingsStore reads from / writes to the two split files. The merged
 // view is returned via Load / saved via Save.
 type SettingsStore struct {
+	ctx      context.Context
 	mu       sync.Mutex
 	slot     *Slot
 	userPath string
 	slotPath string
+	// userHash is the SHA-256 of the most recent user-level bytes we
+	// wrote or loaded. Used by handleUserExternalChange to skip our own
+	// write echoes from the watcher.
+	userHash    string
+	userWatcher *FileWatcher
 }
 
 func NewSettingsStore(slot *Slot) *SettingsStore {
 	return &SettingsStore{slot: slot}
+}
+
+// setContext stores the Wails ctx for emitting settings:changed events.
+func (s *SettingsStore) setContext(ctx context.Context) {
+	s.ctx = ctx
 }
 
 func (s *SettingsStore) ensurePaths() (userPath, slotPath string, err error) {
@@ -148,6 +162,7 @@ func (s *SettingsStore) loadUserLocked() (UserSettings, error) {
 	data, err := os.ReadFile(userPath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			s.userHash = contentHash(nil)
 			return defaultUserSettings(), nil
 		}
 		return defaultUserSettings(), fmt.Errorf("ReadFile user: %w", err)
@@ -164,6 +179,7 @@ func (s *SettingsStore) loadUserLocked() (UserSettings, error) {
 		_ = os.Rename(userPath, userPath+".bak")
 		return defaultUserSettings(), nil
 	}
+	s.userHash = contentHash(data)
 	return f.Settings, nil
 }
 
@@ -228,15 +244,10 @@ func (s *SettingsStore) Save(in Settings) error {
 	return s.saveSlotLocked(sl)
 }
 
+// saveUserLocked writes the user-level file atomically and refreshes
+// userHash so the watcher dedupe step recognizes our own write.
 func (s *SettingsStore) saveUserLocked(u UserSettings) error {
-	userPath, _, err := s.ensurePaths()
-	if err != nil {
-		return err
-	}
-	return writeJSONAtomic(userPath, userSettingsFile{
-		Version:  userSettingsSchemaVersion,
-		Settings: u,
-	})
+	return s.writeUserAtomicLocked(u)
 }
 
 func (s *SettingsStore) saveSlotLocked(sl SlotSettings) error {
@@ -263,6 +274,86 @@ func writeJSONAtomic(path string, v interface{}) error {
 		return fmt.Errorf("Rename: %w", err)
 	}
 	return nil
+}
+
+// saveUserLockedHashed wraps the user-file write so we can update userHash
+// in the same step. saveUserLocked itself stays as a thin convenience
+// helper for callers that don't want to think about hashing.
+func (s *SettingsStore) writeUserAtomicLocked(u UserSettings) error {
+	userPath, _, err := s.ensurePaths()
+	if err != nil {
+		return err
+	}
+	f := userSettingsFile{Version: userSettingsSchemaVersion, Settings: u}
+	data, err := json.MarshalIndent(f, "", "  ")
+	if err != nil {
+		return fmt.Errorf("Marshal: %w", err)
+	}
+	tmp := userPath + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return fmt.Errorf("WriteFile tmp: %w", err)
+	}
+	if err := os.Rename(tmp, userPath); err != nil {
+		return fmt.Errorf("Rename: %w", err)
+	}
+	s.userHash = contentHash(data)
+	return nil
+}
+
+// StartWatcher begins watching the user-level settings.json so reader
+// slots see writes from the main slot. Slot-level state is intentionally
+// not watched — it's owned by this process exclusively.
+func (s *SettingsStore) StartWatcher() {
+	if s.ctx == nil {
+		return
+	}
+	s.mu.Lock()
+	if s.userWatcher != nil {
+		s.mu.Unlock()
+		return
+	}
+	userPath, _, err := s.ensurePaths()
+	if err != nil {
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+	w := NewFileWatcher(userPath, s.handleUserExternalChange)
+	s.userWatcher = w
+	w.Start()
+}
+
+// StopWatcher halts the user-settings watcher. Idempotent.
+func (s *SettingsStore) StopWatcher() {
+	if s.userWatcher != nil {
+		s.userWatcher.Stop()
+		s.userWatcher = nil
+	}
+}
+
+func (s *SettingsStore) handleUserExternalChange() {
+	s.mu.Lock()
+	userPath, _, err := s.ensurePaths()
+	if err != nil {
+		s.mu.Unlock()
+		return
+	}
+	data, err := os.ReadFile(userPath)
+	if err != nil {
+		s.mu.Unlock()
+		return
+	}
+	if contentHash(data) == s.userHash {
+		s.mu.Unlock()
+		return
+	}
+	// Update cached hash so subsequent self-writes don't re-trigger.
+	s.userHash = contentHash(data)
+	s.mu.Unlock()
+
+	if s.ctx != nil {
+		wruntime.EventsEmit(s.ctx, "settings:changed")
+	}
 }
 
 // SetTheme is a convenience updater (used by the title bar's theme toggle).

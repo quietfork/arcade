@@ -76,8 +76,15 @@ func main() {
 			app.startup(ctx)
 			ptyMgr.setContext(ctx)
 			projects.setContext(ctx)
+			settings.setContext(ctx)
+			// Start cross-slot file watchers — must run after setContext
+			// so handlers can emit Wails events.
+			projects.StartWatcher()
+			settings.StartWatcher()
 		},
 		OnShutdown: func(ctx context.Context) {
+			projects.StopWatcher()
+			settings.StopWatcher()
 			ptyMgr.Shutdown()
 			slot.Release()
 		},
