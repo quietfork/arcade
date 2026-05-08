@@ -40,9 +40,9 @@ type ProjectInput struct {
 	Tags    []string          `json:"tags,omitempty"`
 }
 
-// ProjectStore persists the project catalog as JSON under ~/.cc-launcher.
+// ProjectStore persists the project catalog as JSON under ~/.arcade.
 // Phase 6: projects.json is shared across all slots; only the writer slot
-// (the one holding ~/.cc-launcher/slots/main/lock.json) may mutate it.
+// (the one holding ~/.arcade/slots/main/lock.json) may mutate it.
 // Reader slots fall back to read-only methods (List, ListWithStatus) and
 // receive `projects:changed` events when the writer modifies the file.
 type ProjectStore struct {
@@ -83,7 +83,7 @@ func (s *ProjectStore) ensurePath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("UserHomeDir: %w", err)
 	}
-	dir := filepath.Join(home, ".cc-launcher")
+	dir := filepath.Join(home, ".arcade")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("MkdirAll: %w", err)
 	}

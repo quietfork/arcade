@@ -51,7 +51,7 @@ func AcquireSlotLock(slotName string) (*SlotLock, error) {
 	if err != nil {
 		return nil, fmt.Errorf("UserHomeDir: %w", err)
 	}
-	dir := filepath.Join(home, ".cc-launcher", "slots", slotName)
+	dir := filepath.Join(home, ".arcade", "slots", slotName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("MkdirAll slot dir: %w", err)
 	}
@@ -144,7 +144,7 @@ func IsMainSlotLockFresh() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	p := filepath.Join(home, ".cc-launcher", "slots", "main", "lock.json")
+	p := filepath.Join(home, ".arcade", "slots", "main", "lock.json")
 	info, err := os.Stat(p)
 	if err != nil {
 		if os.IsNotExist(err) {

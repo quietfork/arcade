@@ -40,34 +40,40 @@ func main() {
 
 	slot, err := NewSlot(*slotName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cc-launcher: %v\n", err)
+		fmt.Fprintf(os.Stderr, "arcade: %v\n", err)
 		os.Exit(2)
 	}
 
-	title := "cc-launcher"
+	title := "Arcade"
 	if slot.Name != "main" {
-		title = fmt.Sprintf("cc-launcher · %s", slot.Name)
+		title = fmt.Sprintf("Arcade · %s", slot.Name)
 	}
 
 	// Skip slot locking + migrations when wails build is just generating TS
 	// bindings. See isBindingGenerationMode for why.
 	bindingMode := isBindingGenerationMode()
 	if !bindingMode {
+		// First: rename legacy ~/.cc-launcher → ~/.arcade if present.
+		// All later migrations and stores assume the canonical .arcade
+		// location, so this must run before anything else touches disk.
+		if err := migrateLegacyDataDir(); err != nil {
+			fmt.Fprintf(os.Stderr, "arcade: legacy data migration warning: %v\n", err)
+		}
 		// Migrate pre-Phase-6 state files. Failures are logged but
 		// non-fatal — the user falls back to defaults, which is
 		// recoverable.
 		if err := migrateLayoutsToMainSlot(); err != nil {
-			fmt.Fprintf(os.Stderr, "cc-launcher: layout migration warning: %v\n", err)
+			fmt.Fprintf(os.Stderr, "arcade: layout migration warning: %v\n", err)
 		}
 		if err := migrateSettingsToSplit(); err != nil {
-			fmt.Fprintf(os.Stderr, "cc-launcher: settings migration warning: %v\n", err)
+			fmt.Fprintf(os.Stderr, "arcade: settings migration warning: %v\n", err)
 		}
 		// Acquire the slot's lock and determine writer/reader role. A
 		// fresh lock on the same slot means another instance is alive —
 		// refuse to start so two windows don't fight over the same
 		// slot's storage.
 		if err := slot.AcquireLocksAndDetermineRole(); err != nil {
-			fmt.Fprintf(os.Stderr, "cc-launcher: %v\n", err)
+			fmt.Fprintf(os.Stderr, "arcade: %v\n", err)
 			os.Exit(3)
 		}
 		// Belt-and-suspenders: also release on any main() exit path. Any

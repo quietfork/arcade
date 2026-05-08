@@ -18,7 +18,7 @@ const (
 // parent. DETACHED_PROCESS gives the child its own console (we don't
 // share one anyway since the parent is a GUI), and CREATE_NEW_PROCESS_GROUP
 // shields the child from Ctrl-C / job-object signals delivered to the
-// parent. The new cc-launcher window still appears because Wails creates
+// parent. The new Arcade window still appears because Wails creates
 // it explicitly — these flags govern process lifetime, not visibility.
 func setupCmdDetached(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{

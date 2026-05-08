@@ -57,7 +57,7 @@ export function TitleBar({
                 </button>
             </div>
             <div className="title-text mono">
-                cc-launcher · <b>multiplex</b> · slot:{slotName}
+                <b>Arcade</b> · slot:{slotName}
                 {slotRole && (
                     <span className={`slot-role role-${slotRole}`} title={
                         slotRole === 'writer'

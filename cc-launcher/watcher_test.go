@@ -64,7 +64,7 @@ func TestSettingsStore_DetectExternalChange(t *testing.T) {
 		hashBefore := s.userHash
 
 		// Simulate another slot rewriting the user file with different bytes.
-		userPath := filepath.Join(home, ".cc-launcher", "settings.json")
+		userPath := filepath.Join(home, ".arcade", "settings.json")
 		newBytes := []byte(`{"version":2,"settings":{"theme":"light"}}`)
 		if err := os.WriteFile(userPath, newBytes, 0o600); err != nil {
 			t.Fatal(err)

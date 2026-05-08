@@ -11,7 +11,7 @@ import (
 // withTempHome forces UserHomeDir() to return t.TempDir() by setting the
 // platform-appropriate env vars, runs fn, then restores. This lets us
 // exercise the migration code against a clean filesystem without risking
-// the developer's real ~/.cc-launcher.
+// the developer's real ~/.arcade.
 func withTempHome(t *testing.T, fn func(home string)) {
 	t.Helper()
 	home := t.TempDir()
@@ -30,7 +30,7 @@ func TestMigrateLayoutsToMainSlot_NoLegacyFile(t *testing.T) {
 			t.Fatalf("expected nil for missing legacy file, got: %v", err)
 		}
 		// No file should be created.
-		newPath := filepath.Join(home, ".cc-launcher", "slots", "main", "layout.json")
+		newPath := filepath.Join(home, ".arcade", "slots", "main", "layout.json")
 		if _, err := os.Stat(newPath); !os.IsNotExist(err) {
 			t.Fatalf("new path unexpectedly exists: err=%v", err)
 		}
@@ -39,7 +39,7 @@ func TestMigrateLayoutsToMainSlot_NoLegacyFile(t *testing.T) {
 
 func TestMigrateLayoutsToMainSlot_MovesFile(t *testing.T) {
 	withTempHome(t, func(home string) {
-		base := filepath.Join(home, ".cc-launcher")
+		base := filepath.Join(home, ".arcade")
 		if err := os.MkdirAll(base, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestMigrateLayoutsToMainSlot_MovesFile(t *testing.T) {
 
 func TestMigrateLayoutsToMainSlot_AlreadyMigrated(t *testing.T) {
 	withTempHome(t, func(home string) {
-		base := filepath.Join(home, ".cc-launcher")
+		base := filepath.Join(home, ".arcade")
 		newPath := filepath.Join(base, "slots", "main", "layout.json")
 		if err := os.MkdirAll(filepath.Dir(newPath), 0o700); err != nil {
 			t.Fatal(err)
@@ -108,7 +108,7 @@ func TestMigrateSettingsToSplit_NoLegacyFile(t *testing.T) {
 
 func TestMigrateSettingsToSplit_AlreadyV2(t *testing.T) {
 	withTempHome(t, func(home string) {
-		base := filepath.Join(home, ".cc-launcher")
+		base := filepath.Join(home, ".arcade")
 		if err := os.MkdirAll(base, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -138,7 +138,7 @@ func TestMigrateSettingsToSplit_AlreadyV2(t *testing.T) {
 
 func TestMigrateSettingsToSplit_SplitsV1(t *testing.T) {
 	withTempHome(t, func(home string) {
-		base := filepath.Join(home, ".cc-launcher")
+		base := filepath.Join(home, ".arcade")
 		if err := os.MkdirAll(base, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -202,7 +202,7 @@ func TestMigrateSettingsToSplit_SplitsV1(t *testing.T) {
 
 func TestAcquireMigrationLock_StaleRecovery(t *testing.T) {
 	withTempHome(t, func(home string) {
-		base := filepath.Join(home, ".cc-launcher")
+		base := filepath.Join(home, ".arcade")
 		if err := os.MkdirAll(base, 0o700); err != nil {
 			t.Fatal(err)
 		}

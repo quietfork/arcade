@@ -10,7 +10,7 @@ export interface StatusBarStats {
 export function StatusBar({ paneCount, running, idle, exited, errored, theme }: StatusBarStats) {
     return (
         <div className="statusbar mono">
-            <div className="seg"><span>cc-launcher</span></div>
+            <div className="seg"><span>arcade</span></div>
             <div className="seg"><span>panes</span><b>{paneCount}</b></div>
             <div className="seg"><span>running</span><b>{running}</b></div>
             <div className="seg"><span>idle</span><b>{idle}</b></div>

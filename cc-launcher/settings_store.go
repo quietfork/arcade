@@ -18,7 +18,7 @@ const userSettingsSchemaVersion = 2
 const slotSettingsSchemaVersion = 1
 
 // UserSettings is shared across all slots and is written by the main slot
-// only (FR-NEW-16′ enforces this). Lives in ~/.cc-launcher/settings.json.
+// only (FR-NEW-16′ enforces this). Lives in ~/.arcade/settings.json.
 type UserSettings struct {
 	Theme            string   `json:"theme"`            // "dark" | "light"
 	FontFamily       string   `json:"fontFamily"`       // override for terminal font (empty = default)
@@ -31,7 +31,7 @@ type UserSettings struct {
 }
 
 // SlotSettings is per-window UI state. Each slot owns its own copy at
-// ~/.cc-launcher/slots/<slot>/slot-settings.json — every slot can write
+// ~/.arcade/slots/<slot>/slot-settings.json — every slot can write
 // freely without contention.
 type SlotSettings struct {
 	SidebarHidden bool   `json:"sidebarHidden"`
@@ -131,7 +131,7 @@ func (s *SettingsStore) ensurePaths() (userPath, slotPath string, err error) {
 	if err != nil {
 		return "", "", fmt.Errorf("UserHomeDir: %w", err)
 	}
-	base := filepath.Join(home, ".cc-launcher")
+	base := filepath.Join(home, ".arcade")
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return "", "", fmt.Errorf("MkdirAll base: %w", err)
 	}

@@ -16,7 +16,7 @@ func TestAcquireSlotLock_Basic(t *testing.T) {
 		defer lock.Release()
 
 		// Lock file should exist.
-		path := filepath.Join(home, ".cc-launcher", "slots", "main", "lock.json")
+		path := filepath.Join(home, ".arcade", "slots", "main", "lock.json")
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("lock file not created: %v", err)
 		}
@@ -56,7 +56,7 @@ func TestAcquireSlotLock_DifferentSlots(t *testing.T) {
 
 func TestAcquireSlotLock_StaleReclaim(t *testing.T) {
 	withTempHome(t, func(home string) {
-		dir := filepath.Join(home, ".cc-launcher", "slots", "main")
+		dir := filepath.Join(home, ".arcade", "slots", "main")
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -108,7 +108,7 @@ func TestSlot_AcquireLocksAndDetermineRole_MainIsWriter(t *testing.T) {
 func TestSlot_TryPromote_PromotesWhenMainStale(t *testing.T) {
 	withTempHome(t, func(home string) {
 		// Simulate a dead main slot: a stale lock file with old mtime.
-		mainDir := filepath.Join(home, ".cc-launcher", "slots", "main")
+		mainDir := filepath.Join(home, ".arcade", "slots", "main")
 		if err := os.MkdirAll(mainDir, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -166,7 +166,7 @@ func TestSlot_TryPromote_NoOpWhenMainAlive(t *testing.T) {
 func TestSlot_TryPromote_FiresOnRoleChangeOnce(t *testing.T) {
 	withTempHome(t, func(home string) {
 		// Stale main lock.
-		mainDir := filepath.Join(home, ".cc-launcher", "slots", "main")
+		mainDir := filepath.Join(home, ".arcade", "slots", "main")
 		if err := os.MkdirAll(mainDir, 0o700); err != nil {
 			t.Fatal(err)
 		}

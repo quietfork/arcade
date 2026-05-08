@@ -19,7 +19,7 @@ export function ConsentDialog({ onAccept }: ConsentDialogProps) {
             <div className="modal" style={{ minWidth: 520 }}>
                 <h2 className="modal-title">first-run notice</h2>
                 <p style={{ margin: '0 0 12px 0', fontSize: 12, color: 'var(--fg-1)', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6 }}>
-                    cc-launcher launches Claude Code with{' '}
+                    Arcade launches Claude Code with{' '}
                     <strong style={{ color: 'var(--fg-0)' }}>--dangerously-skip-permissions</strong>{' '}
                     by default.
                 </p>

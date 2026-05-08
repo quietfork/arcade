@@ -1,4 +1,4 @@
-module cc-launcher
+module arcade
 
 go 1.23.0
 

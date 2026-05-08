@@ -9,7 +9,7 @@ import (
 )
 
 // ClipboardService persists pasted images so the file path can be inserted
-// into a Claude Code session. Files live under ~/.cc-launcher/clipboard.
+// into a Claude Code session. Files live under ~/.arcade/clipboard.
 type ClipboardService struct {
 	dir string
 }
@@ -26,7 +26,7 @@ func (c *ClipboardService) ensureDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("UserHomeDir: %w", err)
 	}
-	dir := filepath.Join(home, ".cc-launcher", "clipboard")
+	dir := filepath.Join(home, ".arcade", "clipboard")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("MkdirAll: %w", err)
 	}

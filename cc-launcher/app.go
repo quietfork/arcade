@@ -99,7 +99,7 @@ func (a *App) PlatformName() string {
 	return runtime.GOOS
 }
 
-// OpenNewWindow spawns a fresh cc-launcher process bound to a different
+// OpenNewWindow spawns a fresh arcade process bound to a different
 // slot name. The child is detached (its own process group, separate
 // console on Windows) so closing this window doesn't take it down.
 //
