@@ -6,6 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -13,6 +15,21 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// isBindingGenerationMode detects whether main() was invoked by wails build's
+// wailsbindings.exe helper, which compiles our package into a temp exe and
+// runs main() purely to extract Go type bindings — wails.Run() returns
+// immediately without opening a window. In that mode we must skip slot
+// locking entirely: (1) bindgen runs may overlap and collide on the lock,
+// (2) any abnormal helper exit (rare but observed) would leave a fresh-
+// looking lock pinning the slot for ~30s, blocking the user's real launch.
+func isBindingGenerationMode() bool {
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(filepath.Base(exe)), "wailsbindings")
+}
 
 //go:embed all:frontend/dist
 var assets embed.FS
@@ -32,21 +49,38 @@ func main() {
 		title = fmt.Sprintf("cc-launcher · %s", slot.Name)
 	}
 
-	// Migrate pre-Phase-6 state files. Failures are logged but non-fatal —
-	// the user falls back to defaults, which is recoverable.
-	if err := migrateLayoutsToMainSlot(); err != nil {
-		fmt.Fprintf(os.Stderr, "cc-launcher: layout migration warning: %v\n", err)
-	}
-	if err := migrateSettingsToSplit(); err != nil {
-		fmt.Fprintf(os.Stderr, "cc-launcher: settings migration warning: %v\n", err)
-	}
-
-	// Acquire the slot's lock and determine writer/reader role. A fresh
-	// lock on the same slot means another instance is alive — refuse to
-	// start so the two windows don't fight over the same slot's storage.
-	if err := slot.AcquireLocksAndDetermineRole(); err != nil {
-		fmt.Fprintf(os.Stderr, "cc-launcher: %v\n", err)
-		os.Exit(3)
+	// Skip slot locking + migrations when wails build is just generating TS
+	// bindings. See isBindingGenerationMode for why.
+	bindingMode := isBindingGenerationMode()
+	if !bindingMode {
+		// Migrate pre-Phase-6 state files. Failures are logged but
+		// non-fatal — the user falls back to defaults, which is
+		// recoverable.
+		if err := migrateLayoutsToMainSlot(); err != nil {
+			fmt.Fprintf(os.Stderr, "cc-launcher: layout migration warning: %v\n", err)
+		}
+		if err := migrateSettingsToSplit(); err != nil {
+			fmt.Fprintf(os.Stderr, "cc-launcher: settings migration warning: %v\n", err)
+		}
+		// Acquire the slot's lock and determine writer/reader role. A
+		// fresh lock on the same slot means another instance is alive —
+		// refuse to start so two windows don't fight over the same
+		// slot's storage.
+		if err := slot.AcquireLocksAndDetermineRole(); err != nil {
+			fmt.Fprintf(os.Stderr, "cc-launcher: %v\n", err)
+			os.Exit(3)
+		}
+		// Belt-and-suspenders: also release on any main() exit path. Any
+		// panic / unexpected wails.Run error would otherwise leave the
+		// lock pinned. Release is idempotent so this pairs safely with
+		// the OnShutdown call below.
+		defer slot.Release()
+	} else {
+		// Bindgen needs *something* assigned to slot.Role so binding
+		// generation doesn't trip on nil-comparison logic, but no role
+		// flips or file watchers are required since we won't open a
+		// window. Set writer so any bind-time IsWriter() probe succeeds.
+		slot.Role = RoleWriter
 	}
 
 	app := NewApp(slot)
