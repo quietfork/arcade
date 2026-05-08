@@ -14,16 +14,22 @@ import (
 // holder crashed.
 const migrationLockTTL = 30 * time.Second
 
-// migrateLegacyDataDir renames ~/.arcade to ~/.arcade if the legacy
-// directory exists and the new one does not. Idempotent: returns nil
-// when the new directory already exists or no legacy dir is present.
+// legacyDataDirName is the data directory name from the cc-launcher era.
+// Kept as a string constant (not a path constant) so the rebrand-rename
+// pass through the codebase can never accidentally rewrite it the way
+// it did the first time.
+const legacyDataDirName = ".cc-launcher"
+
+// migrateLegacyDataDir renames the legacy ~/.cc-launcher directory to
+// ~/.arcade if the old directory exists and the new one does not.
+// Idempotent: returns nil when the new directory already exists or no
+// legacy dir is present.
 //
 // Runs before all other migrations so the rest of the codebase can
-// assume the canonical ~/.arcade location. If the rename fails (most
-// commonly: a prior cc-launcher process is still running and holds an
-// open file in the legacy dir), we log and continue — the app will
-// start fresh in ~/.arcade and the user can rerun once the old process
-// has exited.
+// assume the canonical ~/.arcade location. The rename is retried up to
+// 5 times with a short backoff to absorb transient Windows sharing
+// violations (AV scans, indexer, Explorer thumbnail handles can briefly
+// pin the directory just after a prior cc-launcher process exits).
 func migrateLegacyDataDir() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -32,10 +38,10 @@ func migrateLegacyDataDir() error {
 	newDir := filepath.Join(home, ".arcade")
 	if _, err := os.Stat(newDir); err == nil {
 		// Already migrated (or fresh install on a machine that never
-		// ran cc-launcher).
+		// ran the legacy build).
 		return nil
 	}
-	oldDir := filepath.Join(home, ".arcade")
+	oldDir := filepath.Join(home, legacyDataDirName)
 	info, err := os.Stat(oldDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -46,10 +52,18 @@ func migrateLegacyDataDir() error {
 	if !info.IsDir() {
 		return nil // unexpected file at that path; ignore
 	}
-	if err := os.Rename(oldDir, newDir); err != nil {
-		return fmt.Errorf("rename %s → %s: %w", oldDir, newDir, err)
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			time.Sleep(200 * time.Millisecond)
+		}
+		if err := os.Rename(oldDir, newDir); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
 	}
-	return nil
+	return fmt.Errorf("rename %s → %s after 5 attempts: %w", oldDir, newDir, lastErr)
 }
 
 // migrationWaitTotal is the upper bound on how long we'll wait for another
