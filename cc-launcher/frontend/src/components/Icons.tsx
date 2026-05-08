@@ -26,6 +26,12 @@ export const Icon = {
     Max: () => (
         <svg {...svgProps}><rect x="3" y="3" width="6" height="6" /></svg>
     ),
+    Restore: () => (
+        <svg {...svgProps}>
+            <rect x="2" y="4" width="6" height="6" />
+            <path d="M4 4V2h6v6H8" />
+        </svg>
+    ),
     SplitH: () => (
         <svg {...svgProps} strokeWidth={1}>
             <rect x="1.5" y="1.5" width="9" height="9" />

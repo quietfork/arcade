@@ -156,7 +156,7 @@ export const PaneHost = forwardRef<PaneHostHandle, PaneHostProps>(function PaneH
                         onClick={(e) => { e.stopPropagation(); onMaximizeToggle?.(paneId); }}
                         onMouseDown={(e) => e.stopPropagation()}
                     >
-                        <Icon.Max />
+                        {maximized ? <Icon.Restore /> : <Icon.Max />}
                     </button>
                     <button
                         className="pane-btn danger"

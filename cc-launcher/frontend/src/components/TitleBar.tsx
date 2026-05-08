@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { Icon } from './Icons';
 import { WindowMinimise, WindowToggleMaximise, WindowQuit } from '../../wailsjs/go/main/App';
 
@@ -34,8 +35,18 @@ export function TitleBar({
         ? 'Theme can only be changed from the main window'
         : `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
 
+    // Native Windows behaviour: double-clicking the title bar toggles maximize.
+    // Wails' frameless window doesn't wire this automatically, so we do it here.
+    // Skip the toggle when the dblclick lands on (or inside) a button so menu
+    // buttons don't trip it.
+    const onTitleBarDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) return;
+        WindowToggleMaximise();
+    };
+
     return (
-        <div className="titlebar">
+        <div className="titlebar" onDoubleClick={onTitleBarDoubleClick}>
             <div className="titlebar-left">
                 <button
                     className={`tb-btn ${sidebarVisible ? 'is-active' : ''}`}
