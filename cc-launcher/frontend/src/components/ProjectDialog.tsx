@@ -67,17 +67,6 @@ export function ProjectDialog({ mode, initial, onSubmit, onCancel }: ProjectDial
                 <h2 className="modal-title">{mode === 'add' ? 'Add Project' : 'Edit Project'}</h2>
 
                 <label className="form-row">
-                    <span className="form-label">Name</span>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Display name"
-                        autoFocus
-                    />
-                </label>
-
-                <label className="form-row">
                     <span className="form-label">Path</span>
                     <div className="form-input-row">
                         <input
@@ -86,9 +75,20 @@ export function ProjectDialog({ mode, initial, onSubmit, onCancel }: ProjectDial
                             onChange={(e) => setPath(e.target.value)}
                             placeholder="C:\path\to\project"
                             style={{ flex: 1 }}
+                            autoFocus
                         />
                         <button type="button" onClick={browse}>Browse...</button>
                     </div>
+                </label>
+
+                <label className="form-row">
+                    <span className="form-label">Name</span>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Display name (auto-filled from folder)"
+                    />
                 </label>
 
                 <label className="form-row">
