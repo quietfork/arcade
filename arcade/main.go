@@ -12,6 +12,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -112,6 +113,16 @@ func main() {
 			WebviewIsTransparent:              false,
 			WindowIsTranslucent:               false,
 			DisableFramelessWindowDecorations: false,
+		},
+		// macOS keeps the OS-managed traffic-light buttons (close /
+		// minimise / zoom) but hides the title bar chrome itself, letting
+		// our React titlebar render edge-to-edge. The frontend pads the
+		// left side by ~78px so the buttons stay clickable. Win/Linux
+		// branches of this struct are ignored on the wrong platform, so
+		// it's safe to set unconditionally.
+		Mac: &mac.Options{
+			TitleBar: mac.TitleBarHiddenInset(),
+			Appearance: mac.NSAppearanceNameDarkAqua,
 		},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)

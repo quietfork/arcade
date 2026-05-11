@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react';
 import { Icon } from './Icons';
 import { WindowMinimise, WindowToggleMaximise, WindowQuit } from '../../wailsjs/go/main/App';
+import { isMac } from '../platform';
 
 export type SlotRole = 'writer' | 'reader' | '';
 
@@ -36,17 +37,24 @@ export function TitleBar({
         : `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
 
     // Native Windows behaviour: double-clicking the title bar toggles maximize.
-    // Wails' frameless window doesn't wire this automatically, so we do it here.
-    // Skip the toggle when the dblclick lands on (or inside) a button so menu
-    // buttons don't trip it.
+    // macOS does the same (treated as "zoom" by Cocoa). Wails' frameless window
+    // doesn't wire this automatically, so we do it here. Skip when the dblclick
+    // lands on (or inside) a button so menu buttons don't trip it.
     const onTitleBarDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         if (target.closest('button')) return;
         WindowToggleMaximise();
     };
 
+    // On macOS the OS draws traffic-light buttons (close/min/zoom) on the
+    // left of the window. We pad the title bar's left edge to clear them
+    // (TitleBarHiddenInset places them at ~12,12 with ~14px gap each →
+    // last button's right edge is around x=78) and hide our redundant
+    // Windows-style controls on the right.
+    const mac = isMac();
+
     return (
-        <div className="titlebar" onDoubleClick={onTitleBarDoubleClick}>
+        <div className={`titlebar${mac ? ' is-mac' : ''}`} onDoubleClick={onTitleBarDoubleClick}>
             <div className="titlebar-left">
                 <button
                     className={`tb-btn ${sidebarVisible ? 'is-active' : ''}`}
@@ -96,17 +104,19 @@ export function TitleBar({
                     {theme}
                 </button>
             </div>
-            <div className="win-controls">
-                <button className="win-btn" onClick={() => WindowMinimise()} title="Minimise">
-                    <Icon.Min />
-                </button>
-                <button className="win-btn" onClick={() => WindowToggleMaximise()} title="Maximise">
-                    <Icon.Max />
-                </button>
-                <button className="win-btn close-btn" onClick={() => WindowQuit()} title="Close">
-                    <Icon.X />
-                </button>
-            </div>
+            {!mac && (
+                <div className="win-controls">
+                    <button className="win-btn" onClick={() => WindowMinimise()} title="Minimise">
+                        <Icon.Min />
+                    </button>
+                    <button className="win-btn" onClick={() => WindowToggleMaximise()} title="Maximise">
+                        <Icon.Max />
+                    </button>
+                    <button className="win-btn close-btn" onClick={() => WindowQuit()} title="Close">
+                        <Icon.X />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

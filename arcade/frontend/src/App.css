@@ -85,6 +85,12 @@ button {
     gap: 12px;
 }
 
+/* macOS: reserve space for the OS traffic-light buttons drawn at the
+   top-left by NSWindowStyleMaskTitled with TitleBarHiddenInset. The
+   inset places them around x=12 with three 14px buttons + ~6px gap,
+   ending near x=78. 80px gives a small breathing buffer. */
+.titlebar.is-mac { padding-left: 80px; }
+
 .titlebar > *:not(.title-text) { --wails-draggable: no-drag; }
 
 .titlebar-left { display: flex; gap: 2px; }
