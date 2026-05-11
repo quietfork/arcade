@@ -8,7 +8,7 @@
         <key>CFBundleExecutable</key>
         <string>{{.OutputFilename}}</string>
         <key>CFBundleIdentifier</key>
-        <string>com.wails.{{.Name}}</string>
+        <string>dev.quietfork.{{.Name}}</string>
         <key>CFBundleVersion</key>
         <string>{{.Info.ProductVersion}}</string>
         <key>CFBundleGetInfoString</key>
@@ -17,8 +17,10 @@
         <string>{{.Info.ProductVersion}}</string>
         <key>CFBundleIconFile</key>
         <string>iconfile</string>
+        <key>LSApplicationCategoryType</key>
+        <string>public.app-category.developer-tools</string>
         <key>LSMinimumSystemVersion</key>
-        <string>10.13.0</string>
+        <string>10.15.0</string>
         <key>NSHighResolutionCapable</key>
         <string>true</string>
         <key>NSHumanReadableCopyright</key>

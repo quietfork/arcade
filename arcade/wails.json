@@ -7,7 +7,14 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "",
+    "name": "quietfork",
     "email": ""
+  },
+  "info": {
+    "companyName": "quietfork",
+    "productName": "Arcade",
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 quietfork",
+    "comments": "Claude Code multi-pane launcher"
   }
 }
