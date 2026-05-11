@@ -21,12 +21,12 @@ const migrationLockTTL = 30 * time.Second
 const legacyDataDirName = ".cc-launcher"
 
 // migrateLegacyDataDir renames the legacy ~/.cc-launcher directory to
-// ~/.arcade if the old directory exists and the new one does not.
-// Idempotent: returns nil when the new directory already exists or no
-// legacy dir is present.
+// the canonical DataDir() if the old directory exists and the new one
+// does not. Idempotent: returns nil when the new directory already
+// exists or no legacy dir is present.
 //
 // Runs before all other migrations so the rest of the codebase can
-// assume the canonical ~/.arcade location. The rename is retried up to
+// assume the canonical DataDir() location. The rename is retried up to
 // 5 times with a short backoff to absorb transient Windows sharing
 // violations (AV scans, indexer, Explorer thumbnail handles can briefly
 // pin the directory just after a prior cc-launcher process exits).
@@ -35,7 +35,7 @@ func migrateLegacyDataDir() error {
 	if err != nil {
 		return fmt.Errorf("UserHomeDir: %w", err)
 	}
-	newDir := filepath.Join(home, ".arcade")
+	newDir := DataDir()
 	if _, err := os.Stat(newDir); err == nil {
 		// Already migrated (or fresh install on a machine that never
 		// ran the legacy build).
@@ -70,20 +70,16 @@ func migrateLegacyDataDir() error {
 // instance to complete its migration before giving up.
 const migrationWaitTotal = 3 * time.Second
 
-// migrateLayoutsToMainSlot moves a legacy ~/.arcade/layouts.json into
-// ~/.arcade/slots/main/layout.json. Safe to call from any slot — the
+// migrateLayoutsToMainSlot moves a legacy <DataDir>/layouts.json into
+// <DataDir>/slots/main/layout.json. Safe to call from any slot — the
 // data always belongs to "main" because pre-Phase-6 builds only knew one
 // state silo.
 //
-// Concurrency: protected by ~/.arcade/migration.lock (O_EXCL create).
+// Concurrency: protected by <DataDir>/migration.lock (O_EXCL create).
 // If two instances race at first launch, the loser waits for the winner
 // to finish, then returns nil if the target now exists.
 func migrateLayoutsToMainSlot() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("UserHomeDir: %w", err)
-	}
-	base := filepath.Join(home, ".arcade")
+	base := DataDir()
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return fmt.Errorf("MkdirAll base: %w", err)
 	}
@@ -132,10 +128,10 @@ func migrateLayoutsToMainSlot() error {
 	return nil
 }
 
-// migrateSettingsToSplit splits a pre-Phase-6 ~/.arcade/settings.json
+// migrateSettingsToSplit splits a pre-Phase-6 <DataDir>/settings.json
 // (version 1, all 10 fields) into:
-//   - user-level: ~/.arcade/settings.json (version 2, 8 fields)
-//   - slot-level: ~/.arcade/slots/main/slot-settings.json (version 1, 2 fields)
+//   - user-level: <DataDir>/settings.json (version 2, 8 fields)
+//   - slot-level: <DataDir>/slots/main/slot-settings.json (version 1, 2 fields)
 //
 // The slot-level fields (sidebarHidden, activeView) always migrate to the
 // main slot — the original UI state belongs to whichever single window
@@ -143,11 +139,7 @@ func migrateLayoutsToMainSlot() error {
 //
 // Idempotent: a v2 user file is left alone. Migration lock-protected.
 func migrateSettingsToSplit() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("UserHomeDir: %w", err)
-	}
-	base := filepath.Join(home, ".arcade")
+	base := DataDir()
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return fmt.Errorf("MkdirAll base: %w", err)
 	}
@@ -269,7 +261,7 @@ func migrateSettingsToSplit() error {
 	return nil
 }
 
-// acquireMigrationLock creates ~/.arcade/migration.lock with O_EXCL.
+// acquireMigrationLock creates <DataDir>/migration.lock with O_EXCL.
 // Returns a release function that removes the lock file. If a stale lock
 // from a crashed process is found (older than migrationLockTTL), it is
 // removed first so this call can proceed.

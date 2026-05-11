@@ -47,6 +47,7 @@
 | 1.20 | 2026-05-07 | quietfork | **FR-NEW-12 Markdown Reader** を Phase 5.1 に追加実装。Explorer で `.md` / `.markdown` をクリック → workspace 右側に Reader パネルを開く(Claude Desktop 風)。`MarkdownReader.tsx` 新規(`react-markdown@8` + `remark-gfm@3` で GFM 対応)、`file_browser.go` に `ReadFile` (5MB 上限 + 拡張子 allowlist) 追加。Reader は最小幅 280px / 最大 900px のドラッグリサイズ可。閉じるボタン / Copy path / Reveal in Explorer。 |
 | 1.21 | 2026-05-07 | quietfork | **Phase 6 計画策定** (実装は別ブランチ `feature/multi-window`)。マルチウィンドウ対応の方針を VSCode の main process パターンを参考に「single-writer / slot 方式」で確定(改訂プラン H)。Wails v2 の制約上 1 プロセス複数ウィンドウは不可なので、**マルチプロセス + slot ID で state 隔離 + main slot 単一 writer + fsnotify 自動同期** で同等の体験を実現する設計に。 |
 | 1.22 | 2026-05-07 | quietfork | **Phase 6 実装完了**(`feature/multi-window` ブランチ、コミット ee1502d → fc51984、計 8 タスク)。FR-NEW-13〜20 全タスク完了 + 各タスク単位で commit。バックエンド: `slot.go` / `lock.go` / `migration.go` / `watcher.go` / `spawn_{windows,unix}.go` 新規 + `project_store.go` / `settings_store.go` / `layout_store.go` / `app.go` / `main.go` 改修。フロントエンド: `NewWindowDialog.tsx` 新規 + `TitleBar.tsx` / `ProjectsView.tsx` / `WorkspaceView.tsx` / `App.tsx` 改修。テスト 28 件追加(ValidateSlotName / migration / lock / watcher / promotion 系)。**残り**: ユーザーレビュー + 実機での 2 ウィンドウ動作確認(プロセス分離 / 双方向同期 / promotion / lock 衝突拒否)。 |
+| 1.23 | 2026-05-11 | quietfork | **Phase 7 計画策定**(`feature/macos-support` ブランチ)。Mac対応の計画を策定。シングルコードベース方針(プラットフォーム分岐で吸収)。データディレクトリは `~/.arcade/` を Mac でも踏襲し互換性維持。Phase 7.1〜7.6 にタスク分割(足場 / ビルド / タイトルバー / キーバインド / 実機検証 / 配布)。Win版 EXE は `D:\Apps\arcade\arcade-v1.0-win-20260511.exe` にスナップショット退避済。 |
 
 ---
 
@@ -63,6 +64,7 @@
 | Phase 5 | VSCode 風サイドバー化(Activity Bar + ビュー切替 + パスコピー) | ⚠ 設計差し戻し → Phase 5.1 へ | 0.7〜0.9 日 |
 | Phase 5.1 | Workspace + Explorer ビュー再構成 + Markdown Reader | ✅ 完了 | 0.7〜1.0 日 |
 | Phase 6 | マルチウィンドウ対応(slot 方式 / VSCode 風 single-writer) | ✅ コード完了(`feature/multi-window` ブランチ、レビュー待ち) | 約 1.5 日 |
+| Phase 7 | macOS 対応(プラットフォーム分岐 / Mac信号機ボタン / Cmd キーバインド) | 🔜 着手中(`feature/macos-support` ブランチ) | 約 1.8 日(配布含めて 2.5〜3 日) |
 
 合計: **MVP まで約 2.5 日 / 完成版まで約 5〜6 日**(要件定義書 10 章と整合)
 
@@ -621,6 +623,123 @@ VSCode は Electron で「**1 プロセス + 複数 renderer**」で実現して
 
 ---
 
+## 8.8 Phase 7: macOS 対応(`feature/macos-support` ブランチ)
+
+### 8.8.1 目的と方針
+
+Arcade を macOS でも動作させる。これまで Windows のみで開発・運用してきたコードを、シングルコードベースのままプラットフォーム分岐で吸収する。
+
+**基本方針**:
+- **シングルコードベース維持**: 別バイナリ/別リポジトリにはしない。Wails のクロスプラットフォーム性を活かす。
+- **データ互換性維持**: データディレクトリは `~/.arcade/` を Mac でも踏襲する(`~/Library/Application Support/Arcade/` には移さない)。ユーザー視認性とプラットフォーム間互換性を優先。
+- **段階的検証**: 足場 → ビルド通過 → 実機動作 → 不具合修正、と切り分けて進める。
+- **Windows 版を壊さない**: 各タスク完了後に Win 版が今まで通り動くことを確認。
+- **EXE 退避済**: Phase 7 着手前の最新 Win 版を `D:\Apps\arcade\arcade-v1.0-win-20260511.exe` に退避済(復旧用)。
+
+### 8.8.2 タスク分解
+
+#### 7.1 足場固め — プラットフォーム差分吸収レイヤー
+
+| # | タスク | 対象ファイル | 工数 |
+|---|---|---|---|
+| 7.1.1 | Go側 platform helper 新規 | `arcade/platform.go`(新規): `IsDarwin()` / `IsWindows()` / `DataDir()` 関数 | 0.1 日 |
+| 7.1.2 | データディレクトリ抽象化 | 既存の `os.UserHomeDir() + ".arcade"` 直書きを `DataDir()` 経由に統一(`slot.go` / `lock.go` / `project_store.go` / `settings_store.go` / `layout_store.go` / `clipboard_service.go` / `migration.go`) | 0.15 日 |
+| 7.1.3 | フロント platform helper | `frontend/src/lib/platform.ts`(新規): `usePlatform()` フック、`isMac()` / `isWindows()` / `modKey()` を返す。`Wails Environment()` 経由 | 0.1 日 |
+| 7.1.4 | Claude CLI PATH 解決の堅牢化 | `pty_manager.go`: 既存 `exec.LookPath("claude")` に加え、Mac の GUI 起動時 PATH 貧弱問題に対応。fallback として `/usr/local/bin/claude`、`/opt/homebrew/bin/claude`、`~/.npm-global/bin/claude`、`~/.local/bin/claude` を順次試行 | 0.15 日 |
+
+**コミット**: `refactor(platform): introduce platform helper and DataDir abstraction`
+
+#### 7.2 ビルド設定 — Mac 向けビルドが構文通過する状態
+
+| # | タスク | 内容 | 工数 |
+|---|---|---|---|
+| 7.2.1 | wails.json Mac 設定 | `bundleID`(`dev.quietfork.arcade` 等)、`displayName`、`category`、`copyright` 追加 | 0.05 日 |
+| 7.2.2 | Info.plist テンプレ | `arcade/build/darwin/Info.plist`(または `Info.plist.tmpl`)整備。最低限の `CFBundleIdentifier` / `CFBundleName` / `CFBundleShortVersionString` / `LSMinimumSystemVersion` | 0.1 日 |
+| 7.2.3 | .icns アイコン生成 | `appicon.png` から `.icns` を生成。Wails が自動生成するか手動で `iconutil` 利用 | 0.1 日 |
+| 7.2.4 | ビルド構文確認 | Win から `wails build -platform darwin/amd64` で構文エラー無しを確認(実行ファイルは Mac 実機がないとテスト不可) | 0.05 日 |
+
+**コミット**: `build(darwin): add wails.json + Info.plist + icns for macOS target`
+
+#### 7.3 タイトルバー — Mac 信号機ボタン対応
+
+| # | タスク | 内容 | 工数 |
+|---|---|---|---|
+| 7.3.1 | Mac 時の左余白 | Mac 時は信号機ボタンの右側(約 76px)から内容を配置する。CSS で `padding-left: 76px` を条件付与 | 0.1 日 |
+| 7.3.2 | カスタムボタンを Mac 非表示 | min/max/close ボタンは Mac では OS 標準を使うので非表示にする | 0.05 日 |
+| 7.3.3 | ドラッグ領域調整 | `--wails-draggable` 領域が信号機ボタンと干渉しないよう調整 | 0.05 日 |
+| 7.3.4 | ダブルクリック zoom 継続 | Mac でも `WindowToggleMaximise` (zoom 相当) で同じ挙動を維持 | 0.05 日 |
+| 7.3.5 | Wails Mac オプション | `wails.json` の `mac.titleBar` を `titleBarAppearsTransparent: true` + `fullSizeContent: true` に設定(信号機残しつつコンテンツを上端まで) | 0.05 日 |
+
+**コミット**: `feat(titlebar): macOS traffic light support with frameless window`
+
+#### 7.4 キーバインド — Ctrl/Cmd 抽象化
+
+| # | タスク | 内容 | 工数 |
+|---|---|---|---|
+| 7.4.1 | キーバインド抽象化 | 既存の `e.ctrlKey` 系を `modKey(e)` ヘルパー経由に置換。Mac では `e.metaKey` を、Win では `e.ctrlKey` を見る | 0.1 日 |
+| 7.4.2 | ターミナル系キー方針 | xterm.js のコピペは Mac 慣習で `Cmd+C` / `Cmd+V`。アプリ系ショートカット(新規ペイン / 全閉じ / レイアウト保存等)も `Cmd+...` | 0.05 日 |
+| 7.4.3 | 表示文字列 | ショートカット表示(ツールチップ等)を Mac では `⌘` / `⇧` / `⌥` で、Win では `Ctrl` / `Shift` / `Alt` で出し分け | 0.05 日 |
+
+**コミット**: `feat(shortcuts): platform-aware modifier keys (Cmd on macOS)`
+
+#### 7.5 Mac 実機検証
+
+| # | 確認項目 | 想定問題 |
+|---|---|---|
+| 7.5.1 | `wails build` が Mac 実機で通る | C ライブラリ依存(creack/pty 等)で OS 別ビルドタグが効くか |
+| 7.5.2 | アプリ起動 / ウィンドウ表示 | 信号機ボタンの位置・サイズ |
+| 7.5.3 | claude セッション起動 | PATH 解決失敗(7.1.4 の fallback が効くか) |
+| 7.5.4 | プロジェクト追加 / 複数ペイン / リサイズ | xterm fit の挙動、Retina 対応 |
+| 7.5.5 | データ永続化(`~/.arcade/`) | パーミッション、隠しディレクトリ可視性 |
+| 7.5.6 | クリップボード画像ペースト | Mac のクリップボード画像形式、`navigator.clipboard.read()` 権限 |
+| 7.5.7 | マルチウィンドウ (slot 方式) | プロセス分離、fsnotify on macOS (FSEvents) |
+
+不具合があれば 7.1〜7.4 にフィードバック → 修正コミット。
+
+**コミット**: `fix(macos): <個別不具合>` を必要に応じて
+
+#### 7.6 配布準備(任意)
+
+| # | タスク | 内容 |
+|---|---|---|
+| 7.6.1 | Universal binary | Intel + Apple Silicon 両対応(`darwin/universal`) |
+| 7.6.2 | コード署名 | Developer ID Application 証明書 |
+| 7.6.3 | Notarization | `xcrun notarytool submit` |
+| 7.6.4 | DMG パッケージング | `create-dmg` 等 |
+
+個人利用なら省略可。Apple Developer 登録(年 $99)が必要。
+
+### 8.8.3 リスクと対策
+
+| # | リスク | 対策 |
+|---|---|---|
+| M1 | Mac GUI 起動時の PATH が貧弱で `claude` が見つからない | `pty_manager.go` に PATH fallback リスト(`/usr/local/bin`, `/opt/homebrew/bin`, `~/.npm-global/bin`, `~/.local/bin`)を実装(7.1.4) |
+| M2 | 信号機ボタンとカスタム UI の干渉 | Wails の `mac.titleBar` 設定 + CSS の `padding-left` で吸収(7.3) |
+| M3 | クロスコンパイル制約(Mac 実機なしでは署名・Notarization 不可) | 7.5 で Mac 実機検証を前提とする。配布は 7.6 で実機ビルド |
+| M4 | xterm.js の Cmd 系キーがブラウザ標準動作とぶつかる | xterm.js の `attachCustomKeyEventHandler` で吸収、必要なら `preventDefault` |
+| M5 | fsnotify が macOS FSEvents 経由でも本当に動くか未検証 | Phase 6 で既に fsnotify 採用済、Phase 7.5.7 で実機確認 |
+| M6 | Retina ディスプレイで xterm のフォントレンダリングが滲む | CSS の `image-rendering` + xterm の `allowProposedApi` 設定で対応、要実機確認 |
+
+### 8.8.4 工数見積
+
+| 区分 | 工数 |
+|---|---|
+| 7.1 足場 | 0.5 日 |
+| 7.2 ビルド設定 | 0.3 日 |
+| 7.3 タイトルバー | 0.3 日 |
+| 7.4 キーバインド | 0.2 日 |
+| 7.5 実機検証 | 0.5 日 |
+| **必須合計** | **約 1.8 日** |
+| 7.6 配布準備(任意) | +0.5〜1.0 日 |
+
+### 8.8.5 Phase 7 で扱わないこと
+
+- Linux 対応 → Mac 対応で得た足場(`platform.go` / `usePlatform`)を活かして将来検討(Phase 9 候補)
+- App Store 配布 → サンドボックス制約が大きいため見送り、外部配布(DMG)のみ想定
+- Mac 特有の機能(Touch Bar、Continuity、Handoff 等)→ Out of Scope
+
+---
+
 ## 9. Out of Scope(v1)
 
 要件定義書 1.4 のとおり、以下は v2 以降で検討:
@@ -648,14 +767,23 @@ VSCode は Electron で「**1 プロセス + 複数 renderer**」で実現して
 
 ## 11. Next Up(直近の着手順)
 
-Phase 0〜5.1 + Markdown Reader(FR-NEW-12)まで完了。Phase 5.1 終了時点で **`main` ブランチに initial commit** 済。次は `feature/multi-window` ブランチで **Phase 6: マルチウィンドウ対応(slot 方式)** に着手する。
+Phase 0〜6 完了(`main` ブランチに反映済、`v1.0` 相当)。次は `feature/macos-support` ブランチで **Phase 7: macOS 対応** に着手する。
 
-実装順は **8.7.5 実装順(コミット粒度)** を参照。途中で計画変更があれば本書を改訂し、コミットメッセージで参照する。
+実装順は **8.8.2 タスク分解** を参照。着手順は以下:
+1. **7.1 足場固め**(`platform.go` + `DataDir()` + フロント `usePlatform` + Claude PATH fallback)
+2. **7.2 ビルド設定**(Win 上で構文確認のみ)
+3. **7.3 タイトルバー**(Mac 信号機ボタン対応)
+4. **7.4 キーバインド**(Cmd/Ctrl 抽象化)
+5. **7.5 Mac 実機検証**(実機がそろい次第)
+6. **7.6 配布準備**(任意、後回し)
 
-Phase 6 完了後、運用安定化を確認してから:
+途中で計画変更があれば本書を改訂し、コミットメッセージで参照する。各タスク完了後は **Win 版が今まで通り動くこと**を確認してから次へ進む。
+
+Phase 7 完了後、運用安定化を確認してから:
 - Phase 4 残タスク(FR-404 テンプレート / FR-106 タグ / FR-105 D&D 並び替え)
-- ペイン単位の「他ウィンドウへ移動」(Phase 7 候補)
-- Wails v3 移行検討(Phase 8 候補、in-process マルチウィンドウ化)
+- ペイン単位の「他ウィンドウへ移動」(D&D)
+- Linux 対応(Phase 9 候補)
+- Wails v3 移行検討(Phase 10 候補、in-process マルチウィンドウ化)
 
 ---
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -93,9 +92,9 @@ func (m *PtyManager) StartSession(command string, args []string, cwd string, col
 		rows = 24
 	}
 
-	resolved, err := exec.LookPath(command)
+	resolved, err := LookPathRobust(command)
 	if err != nil {
-		return "", fmt.Errorf("command %q not found in PATH: %w", command, err)
+		return "", fmt.Errorf("command %q not found in PATH or known install locations: %w", command, err)
 	}
 
 	p, err := pty.New()

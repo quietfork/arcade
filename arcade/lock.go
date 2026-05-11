@@ -47,11 +47,7 @@ type SlotLock struct {
 // error if another instance is alive (heartbeat fresh) on the same slot.
 // Stale or missing locks are reclaimed.
 func AcquireSlotLock(slotName string) (*SlotLock, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("UserHomeDir: %w", err)
-	}
-	dir := filepath.Join(home, ".arcade", "slots", slotName)
+	dir := filepath.Join(DataDir(), "slots", slotName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("MkdirAll slot dir: %w", err)
 	}
@@ -140,11 +136,7 @@ func (s *SlotLock) Release() {
 // main lock means there's a writer, so we're a reader; a stale/missing
 // main lock means FR-NEW-20 will eventually let us promote ourselves.
 func IsMainSlotLockFresh() (bool, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return false, err
-	}
-	p := filepath.Join(home, ".arcade", "slots", "main", "lock.json")
+	p := filepath.Join(DataDir(), "slots", "main", "lock.json")
 	info, err := os.Stat(p)
 	if err != nil {
 		if os.IsNotExist(err) {

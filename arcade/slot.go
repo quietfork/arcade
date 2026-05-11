@@ -28,7 +28,7 @@ const promoteCheckInterval = 5 * time.Second
 // Slot identifies a single Arcade window instance for multi-window state
 // isolation. Each running process is tied to one slot; the slot name is used
 // as a key in lock files and per-slot storage paths under
-// ~/.arcade/slots/<name>/.
+// <DataDir>/slots/<name>/.
 //
 // Role/Lock are zero-valued until AcquireLocksAndDetermineRole runs. After
 // the main slot dies, FR-NEW-20's promotion loop may transition this slot's
