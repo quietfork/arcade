@@ -325,7 +325,16 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
             // PTY sees it.
             const mod = modKey(event);
             // Mod+V — paste (image or text) via async clipboard API.
+            // preventDefault is critical on macOS: without it the browser's
+            // default Cmd+V still fires a `paste` event on xterm's hidden
+            // textarea, which both our onPaste listener and xterm's own
+            // paste handler observe. The PASTE_DEDUPE_MS guard mostly
+            // prevents double-writes, but a fast clipboard.read() inside
+            // manualPaste can lose the race — see Phase 7.5.6 finding where
+            // a screenshot got saved twice (paste-*.980.png + .998.png).
+            // Blocking the default keeps manualPaste as the single source.
             if (mod && !event.shiftKey && !event.altKey && key === 'v') {
+                event.preventDefault();
                 manualPaste();
                 return false;
             }
