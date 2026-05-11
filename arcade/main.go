@@ -91,11 +91,11 @@ func main() {
 	}
 
 	app := NewApp(slot)
-	ptyMgr := NewPtyManager()
+	settings := NewSettingsStore(slot)
+	ptyMgr := NewPtyManager(settings)
 	clipboard := NewClipboardService()
 	projects := NewProjectStore(slot)
 	layouts := NewLayoutStore(slot)
-	settings := NewSettingsStore(slot)
 	fileBrowser := NewFileBrowser()
 
 	err = wails.Run(&options.App{

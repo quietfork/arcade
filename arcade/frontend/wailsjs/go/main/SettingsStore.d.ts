@@ -8,6 +8,8 @@ export function Save(arg1:main.Settings):Promise<void>;
 
 export function SetConsent(arg1:boolean):Promise<void>;
 
+export function SetProxy(arg1:string,arg2:string):Promise<void>;
+
 export function SetSidebarState(arg1:boolean,arg2:string):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;

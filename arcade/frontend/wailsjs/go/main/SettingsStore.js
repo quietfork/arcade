@@ -14,6 +14,10 @@ export function SetConsent(arg1) {
   return window['go']['main']['SettingsStore']['SetConsent'](arg1);
 }
 
+export function SetProxy(arg1, arg2) {
+  return window['go']['main']['SettingsStore']['SetProxy'](arg1, arg2);
+}
+
 export function SetSidebarState(arg1, arg2) {
   return window['go']['main']['SettingsStore']['SetSidebarState'](arg1, arg2);
 }

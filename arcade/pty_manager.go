@@ -14,8 +14,7 @@ import (
 )
 
 // childEnv returns the env to hand to the PTY child process. Inherits the
-// parent's os.Environ() and overlays the variables every modern TTY app
-// expects:
+// parent's os.Environ() and overlays:
 //
 //   - TERM=xterm-256color: tells the child it is an interactive xterm-class
 //     terminal. Without it Claude Code (and other Ink/blessed-style TUIs)
@@ -23,15 +22,30 @@ import (
 //     tips/what's-new layout, no fancy spinners.
 //   - COLORTERM=truecolor: enables 24-bit color output. xterm.js handles
 //     truecolor natively; without this many TUIs cap themselves at 256.
+//   - HTTPS_PROXY / HTTP_PROXY / NO_PROXY: when the user has configured a
+//     proxy in Settings (Phase 8). Both upper and lower case variants are
+//     set so tools that only consult lowercase (curl, some Python libs)
+//     also see the value. Empty proxyURL disables all three.
 //
 // Inheriting os.Environ() preserves user-set vars (PATH, HOME, USERPROFILE,
 // CLAUDE_CODE_*, etc.) so the child sees the same world as if launched
-// from PowerShell.
-func childEnv() []string {
+// from PowerShell — the proxy override sits on top of any pre-existing
+// shell-level proxy env, which is the precedence users expect.
+func childEnv(proxyURL, noProxy string) []string {
 	env := os.Environ()
 	overrides := map[string]string{
 		"TERM":      "xterm-256color",
 		"COLORTERM": "truecolor",
+	}
+	if proxyURL != "" {
+		overrides["HTTPS_PROXY"] = proxyURL
+		overrides["HTTP_PROXY"] = proxyURL
+		overrides["https_proxy"] = proxyURL
+		overrides["http_proxy"] = proxyURL
+	}
+	if noProxy != "" {
+		overrides["NO_PROXY"] = noProxy
+		overrides["no_proxy"] = noProxy
 	}
 	keep := env[:0]
 	for _, kv := range env {
@@ -62,16 +76,19 @@ type session struct {
 }
 
 // PtyManager owns all PTY sessions and bridges them to the frontend
-// via Wails events ("pty:data:<id>", "pty:exit:<id>").
+// via Wails events ("pty:data:<id>", "pty:exit:<id>"). It also reads
+// the user-level proxy settings at session start so the spawned
+// process inherits the configured HTTPS_PROXY / NO_PROXY values.
 type PtyManager struct {
 	ctx      context.Context
+	settings *SettingsStore
 	mu       sync.Mutex
 	sessions map[string]*session
 	nextID   atomic.Uint64
 }
 
-func NewPtyManager() *PtyManager {
-	return &PtyManager{sessions: map[string]*session{}}
+func NewPtyManager(settings *SettingsStore) *PtyManager {
+	return &PtyManager{settings: settings, sessions: map[string]*session{}}
 }
 
 func (m *PtyManager) setContext(ctx context.Context) {
@@ -110,7 +127,17 @@ func (m *PtyManager) StartSession(command string, args []string, cwd string, col
 	if cwd != "" {
 		cmd.Dir = cwd
 	}
-	cmd.Env = childEnv()
+	// Look up proxy settings each StartSession so an in-app proxy change
+	// applies immediately to new panes (existing ones keep their original
+	// env — re-spawn to refresh).
+	var proxyURL, noProxy string
+	if m.settings != nil {
+		if s, err := m.settings.Load(); err == nil {
+			proxyURL = s.ProxyURL
+			noProxy = s.NoProxy
+		}
+	}
+	cmd.Env = childEnv(proxyURL, noProxy)
 	if err := cmd.Start(); err != nil {
 		_ = p.Close()
 		return "", fmt.Errorf("cmd.Start: %w", err)

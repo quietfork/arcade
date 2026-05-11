@@ -19,6 +19,11 @@ const slotSettingsSchemaVersion = 1
 
 // UserSettings is shared across all slots and is written by the main slot
 // only (FR-NEW-16′ enforces this). Lives in <DataDir>/settings.json.
+//
+// Schema version stays at 2 — proxy fields were added in Phase 8 as
+// optional, omitempty JSON fields. Loading an old v2 file leaves them
+// at "" (zero value), which is the explicit "no proxy" state, so no
+// migration is needed.
 type UserSettings struct {
 	Theme            string   `json:"theme"`            // "dark" | "light"
 	FontFamily       string   `json:"fontFamily"`       // override for terminal font (empty = default)
@@ -28,6 +33,8 @@ type UserSettings struct {
 	DefaultArgs      []string `json:"defaultArgs"`      // nil = ["--dangerously-skip-permissions"]
 	Scrollback       int      `json:"scrollback"`       // 0 = 10000
 	DangerousConsent bool     `json:"dangerousConsent"` // first-run --dangerously-skip-permissions consent
+	ProxyURL         string   `json:"proxyURL,omitempty"` // HTTP(S) proxy, e.g. "http://proxy.example.com:8080" — empty disables
+	NoProxy          string   `json:"noProxy,omitempty"`  // comma-separated bypass list, e.g. "localhost,127.0.0.1,*.internal"
 }
 
 // SlotSettings is per-window UI state. Each slot owns its own copy at
@@ -49,6 +56,8 @@ type Settings struct {
 	DefaultArgs      []string `json:"defaultArgs"`
 	Scrollback       int      `json:"scrollback"`
 	DangerousConsent bool     `json:"dangerousConsent"`
+	ProxyURL         string   `json:"proxyURL"`
+	NoProxy          string   `json:"noProxy"`
 	SidebarHidden    bool     `json:"sidebarHidden"`
 	ActiveView       string   `json:"activeView"`
 }
@@ -83,6 +92,8 @@ func mergeSettings(u UserSettings, s SlotSettings) Settings {
 		DefaultArgs:      u.DefaultArgs,
 		Scrollback:       u.Scrollback,
 		DangerousConsent: u.DangerousConsent,
+		ProxyURL:         u.ProxyURL,
+		NoProxy:          u.NoProxy,
 		SidebarHidden:    s.SidebarHidden,
 		ActiveView:       s.ActiveView,
 	}
@@ -228,6 +239,8 @@ func (s *SettingsStore) Save(in Settings) error {
 			DefaultArgs:      in.DefaultArgs,
 			Scrollback:       in.Scrollback,
 			DangerousConsent: in.DangerousConsent,
+			ProxyURL:         in.ProxyURL,
+			NoProxy:          in.NoProxy,
 		}
 		if err := s.saveUserLocked(u); err != nil {
 			return err
@@ -379,6 +392,22 @@ func (s *SettingsStore) SetConsent(v bool) error {
 	defer s.mu.Unlock()
 	cur, _ := s.loadUserLocked()
 	cur.DangerousConsent = v
+	return s.saveUserLocked(cur)
+}
+
+// SetProxy persists the proxy configuration. User-level, writer-only.
+// Empty proxyURL disables proxy. noProxy is comma-separated bypass list.
+// New PTY sessions started afterwards inherit the updated env; existing
+// sessions are not retroactively re-launched.
+func (s *SettingsStore) SetProxy(proxyURL, noProxy string) error {
+	if !s.slot.IsWriter() {
+		return fmt.Errorf("slot %q is reader-only; proxy can only be changed from the main window", s.slot.Name)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cur, _ := s.loadUserLocked()
+	cur.ProxyURL = proxyURL
+	cur.NoProxy = noProxy
 	return s.saveUserLocked(cur)
 }
 

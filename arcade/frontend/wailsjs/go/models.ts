@@ -265,6 +265,8 @@ export namespace main {
 	    defaultArgs: string[];
 	    scrollback: number;
 	    dangerousConsent: boolean;
+	    proxyURL: string;
+	    noProxy: string;
 	    sidebarHidden: boolean;
 	    activeView: string;
 	
@@ -282,6 +284,8 @@ export namespace main {
 	        this.defaultArgs = source["defaultArgs"];
 	        this.scrollback = source["scrollback"];
 	        this.dangerousConsent = source["dangerousConsent"];
+	        this.proxyURL = source["proxyURL"];
+	        this.noProxy = source["noProxy"];
 	        this.sidebarHidden = source["sidebarHidden"];
 	        this.activeView = source["activeView"];
 	    }
