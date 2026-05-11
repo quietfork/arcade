@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css';
 import { StartSession, Write, Resize, Close } from '../../wailsjs/go/main/PtyManager';
 import { SaveImage } from '../../wailsjs/go/main/ClipboardService';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { modKey } from '../platform';
 
 export type TerminalStatus = 'idle' | 'starting' | 'running' | 'exited' | 'error';
 
@@ -317,22 +318,27 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         term.attachCustomKeyEventHandler((event) => {
             if (event.type !== 'keydown') return true;
             const key = event.key.toLowerCase();
-            const ctrl = event.ctrlKey || event.metaKey;
-            // Ctrl+V — paste (image or text) via async clipboard API.
-            if (ctrl && !event.shiftKey && !event.altKey && key === 'v') {
+            // Use the platform mod key (Cmd on Mac, Ctrl elsewhere) so that
+            // Mac users keep Ctrl+V/Ctrl+C/Ctrl+W available for in-terminal
+            // emacs/readline navigation — without that, basic shell editing
+            // breaks because xterm.js intercepts the keystroke before the
+            // PTY sees it.
+            const mod = modKey(event);
+            // Mod+V — paste (image or text) via async clipboard API.
+            if (mod && !event.shiftKey && !event.altKey && key === 'v') {
                 manualPaste();
                 return false;
             }
-            // Ctrl+Shift+C — copy current selection (FR-308).
-            if (ctrl && event.shiftKey && key === 'c') {
+            // Mod+Shift+C — copy current selection (FR-308).
+            if (mod && event.shiftKey && key === 'c') {
                 const sel = term.getSelection();
                 if (sel) {
                     navigator.clipboard.writeText(sel).catch((err) => console.error('copy failed', err));
                 }
                 return false;
             }
-            // App-level shortcuts (FR-503). Ctrl+Shift+* to avoid colliding with claude.
-            if (ctrl && event.shiftKey && !event.altKey) {
+            // App-level shortcuts (FR-503). Mod+Shift+* to avoid colliding with claude.
+            if (mod && event.shiftKey && !event.altKey) {
                 const shortcuts: Record<string, AppShortcut> = {
                     w: 'close',
                     e: 'split-h',

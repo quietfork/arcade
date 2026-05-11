@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 import { Icon } from './Icons';
 import { WindowMinimise, WindowToggleMaximise, WindowQuit } from '../../wailsjs/go/main/App';
-import { isMac } from '../platform';
+import { isMac, formatShortcut } from '../platform';
 
 export type SlotRole = 'writer' | 'reader' | '';
 
@@ -59,7 +59,7 @@ export function TitleBar({
                 <button
                     className={`tb-btn ${sidebarVisible ? 'is-active' : ''}`}
                     onClick={onToggleSidebar}
-                    title={`${sidebarVisible ? 'Hide' : 'Show'} sidebar (Ctrl+B)`}
+                    title={`${sidebarVisible ? 'Hide' : 'Show'} sidebar (${formatShortcut('mod', 'B')})`}
                 >
                     <Icon.Sidebar />
                 </button>

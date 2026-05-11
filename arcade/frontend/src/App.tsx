@@ -27,6 +27,7 @@ import { Load as LoadSettings, SetTheme, SetSidebarState } from '../wailsjs/go/m
 import { GetSlot, GetSlotRole, OpenNewWindow, PlatformName, RevealInExplorer } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import { main } from '../wailsjs/go/models';
+import { modKey } from './platform';
 
 const DEFAULT_COMMAND = 'claude';
 const DEFAULT_ARGS = ['--dangerously-skip-permissions'];
@@ -174,10 +175,11 @@ function App() {
         };
     }, [sidebarVisible, activeView, settings]);
 
-    // Ctrl+B: toggle sidebar visibility (VSCode-compatible).
+    // Mod+B: toggle sidebar visibility (VSCode-compatible). Cmd on Mac so
+    // Ctrl+B remains free for emacs/readline cursor-backward inside terminals.
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
+            if (modKey(e) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
                 e.preventDefault();
                 setSidebarVisible((v) => !v);
             }
