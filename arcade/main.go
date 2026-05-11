@@ -133,6 +133,21 @@ func main() {
 			// so handlers can emit Wails events.
 			projects.StartWatcher()
 			settings.StartWatcher()
+			// Sweep stale clipboard images (>24h old) off disk. Run in a
+			// goroutine so a slow Stat() on a network drive can't delay
+			// the first frame. main slot only — reader slots share the
+			// same directory and a single sweeper avoids racy os.Remove
+			// returns when both processes target the same file.
+			if slot.IsWriter() {
+				go func() {
+					n, err := clipboard.PruneOld()
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "arcade: clipboard prune warning: %v\n", err)
+					} else if n > 0 {
+						fmt.Fprintf(os.Stderr, "arcade: pruned %d old clipboard image(s)\n", n)
+					}
+				}()
+			}
 			// Reader slots: poll for main-slot death so we can promote.
 			// Fires `slot:role-changed` so the TitleBar updates instantly
 			// and ProjectsView/SettingsDialog re-enable their controls.
