@@ -104,7 +104,14 @@ func main() {
 		Height:    800,
 		MinWidth:  800,
 		MinHeight: 500,
-		Frameless: true,
+		// On macOS we must NOT use frameless: Wails' darwin backend skips
+		// NSWindowStyleMaskTitled|Closable when frameless is true, which
+		// removes the traffic-light buttons entirely. The Mac branch below
+		// sets mac.TitleBarHiddenInset() instead, giving the Electron-style
+		// "hidden inset" look: title bar invisible, traffic lights visible.
+		// Windows keeps Frameless:true because the React TitleBar replaces
+		// the OS chrome there.
+		Frameless: !IsDarwin(),
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
