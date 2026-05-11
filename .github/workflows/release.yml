@@ -1,0 +1,222 @@
+name: Release
+
+# Triggered by pushing a tag like `v1.0.0`. Builds:
+#   - Windows NSIS installer (.exe)
+#   - macOS Universal DMG (Intel + Apple Silicon in one file)
+# Linux is intentionally excluded for v1.0 — build from source instead.
+#
+# Code signing is disabled in Phase 1. See the "Future: signing" section at the bottom.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to use for artifact filenames (manual test runs only)'
+        required: false
+        default: 'v0.0.0-dev'
+
+permissions:
+  contents: write  # required by softprops/action-gh-release to create the release
+
+env:
+  GO_VERSION: '1.23'
+  NODE_VERSION: '20'
+  WAILS_VERSION: 'v2.12.0'
+  # Use the tag name on tag pushes; fall back to the manual input for workflow_dispatch.
+  VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  # -------------------------------------------------------------
+  # Windows: NSIS installer
+  # -------------------------------------------------------------
+  build-windows:
+    name: Windows installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: arcade
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: arcade/frontend/package-lock.json
+
+      - name: Ensure NSIS is installed
+        # NSIS is usually preinstalled on windows-latest runners. This is a safety net.
+        run: choco install nsis -y --no-progress
+        working-directory: .
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Install frontend deps
+        working-directory: arcade/frontend
+        run: npm ci
+
+      - name: Build (NSIS installer)
+        run: wails build -platform windows/amd64 -nsis -clean
+
+      - name: Rename installer
+        run: |
+          $version = "${{ env.VERSION }}"
+          $src = Get-ChildItem -Path "build/bin" -Filter "*-installer.exe" | Select-Object -First 1
+          if (-not $src) { throw "No installer found in build/bin" }
+          $dst = "build/bin/Arcade-Setup-$version.exe"
+          Move-Item -LiteralPath $src.FullName -Destination $dst -Force
+          Write-Host "Renamed $($src.Name) -> Arcade-Setup-$version.exe"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: arcade/build/bin/Arcade-Setup-*.exe
+          if-no-files-found: error
+
+  # -------------------------------------------------------------
+  # macOS: Universal DMG (Intel + Apple Silicon)
+  # -------------------------------------------------------------
+  build-macos:
+    name: macOS Universal DMG
+    runs-on: macos-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: arcade
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: arcade/frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Install create-dmg
+        # Shell-script version of create-dmg (https://github.com/create-dmg/create-dmg).
+        # Does not require code signing, unlike the npm `create-dmg` package.
+        run: brew install create-dmg
+        working-directory: .
+
+      - name: Install frontend deps
+        working-directory: arcade/frontend
+        run: npm ci
+
+      - name: Build (Universal binary)
+        run: wails build -platform darwin/universal -clean
+
+      - name: Package DMG
+        run: |
+          VERSION="${{ env.VERSION }}"
+          DMG_NAME="Arcade-${VERSION}-universal.dmg"
+          cd build/bin
+          # Use a fresh tmp dir to avoid contamination from previous runs.
+          rm -f "$DMG_NAME"
+          create-dmg \
+            --volname "Arcade" \
+            --volicon "Arcade.app/Contents/Resources/iconfile.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Arcade.app" 175 200 \
+            --hide-extension "Arcade.app" \
+            --app-drop-link 425 200 \
+            "$DMG_NAME" \
+            "Arcade.app"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: arcade/build/bin/Arcade-*-universal.dmg
+          if-no-files-found: error
+
+  # -------------------------------------------------------------
+  # Publish: attach both artifacts to a GitHub Release
+  # -------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    # Only publish a Release for real tag pushes. workflow_dispatch is for dry-run testing.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist
+
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist
+
+      - name: List artifacts
+        run: ls -la dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Arcade-Setup-*.exe
+            dist/Arcade-*-universal.dmg
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          body: |
+            ## Downloads
+
+            - **Windows** — `Arcade-Setup-${{ github.ref_name }}.exe` (NSIS installer, unsigned — SmartScreen will warn)
+            - **macOS** — `Arcade-${{ github.ref_name }}-universal.dmg` (Intel + Apple Silicon, unsigned — run `xattr -d com.apple.quarantine /Applications/Arcade.app` after dragging to /Applications)
+
+            ## Requirements
+
+            - [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and on PATH.
+            - Windows 10/11 (x64) or macOS 10.15+.
+
+            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for setup details.
+
+# -------------------------------------------------------------
+# Future: code signing
+# -------------------------------------------------------------
+# Phase 1 ships unsigned binaries. To enable signing later:
+#
+# Windows (Authenticode):
+#   - Add secret `CSC_LINK` (base64 of .pfx) and `CSC_KEY_PASSWORD`
+#   - Decode the .pfx in a setup step, then sign with `signtool` after wails build:
+#       signtool sign /f cert.pfx /p $env:CSC_KEY_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 Arcade.exe
+#   - EV certificates skip the SmartScreen "first reputation" warning entirely.
+#
+# macOS (Developer ID + notarization):
+#   - Add secrets: APPLE_ID, APPLE_TEAM_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_CERT (.p12 base64), APPLE_CERT_PASSWORD
+#   - Import the cert into a temp keychain, codesign Arcade.app with --options runtime, then notarize:
+#       xcrun notarytool submit Arcade.dmg --apple-id $APPLE_ID --team-id $APPLE_TEAM_ID --password $APPLE_APP_SPECIFIC_PASSWORD --wait
+#       xcrun stapler staple Arcade.dmg
+#   - Without notarization, Gatekeeper requires `xattr -d com.apple.quarantine` on every download.
