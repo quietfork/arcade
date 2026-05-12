@@ -39,6 +39,10 @@ $RECYCLE.BIN/
 *.log
 *.tmp
 
+# ── Source images (ChatGPT outputs, regeneratable) ───────────
+# Final assets live in assets/og/. Keep raw upstream PNGs local-only.
+/png/
+
 # ── Local config / secrets ───────────────────────────────────
 .env
 .env.local
