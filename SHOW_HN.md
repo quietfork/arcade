@@ -26,7 +26,7 @@ Pick one. All three avoid hype words and aim for 60–80 chars (HN's soft cap is
 >
 > Feedback welcome, especially on the multi-window sync (it uses fsnotify for live state sharing — open to better designs).
 >
-> github.com/quietforkTsuruta0821/arcade
+> github.com/quietfork/arcade
 
 ---
 
@@ -95,7 +95,7 @@ HN comments arrive fast in the first hour. Have these typed up so you can paste-
 
 - [ ] Set HN account karma > 50 if possible (older HN accounts get less aggressive penalty)
 - [ ] Post Tuesday–Thursday, 8:00–10:00 AM PT (highest organic traffic window)
-- [ ] Submit URL: `https://github.com/quietforkTsuruta0821/arcade` (not a blog post; HN trusts GitHub more for "Show HN")
+- [ ] Submit URL: `https://github.com/quietfork/arcade` (not a blog post; HN trusts GitHub more for "Show HN")
 - [ ] First comment from your account: paste the body above as a top-level comment (HN convention — the URL doesn't show context otherwise)
 - [ ] Stay at the keyboard for the first 90 minutes; reply to every comment within 5 minutes
 - [ ] Don't ask friends to upvote — HN detects vote rings and penalizes hard

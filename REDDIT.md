@@ -35,7 +35,7 @@ Arcade is a desktop app (Windows + macOS) that lets you:
 
 It's a Wails app (Go + WebView). Binary is ~25 MB. No telemetry, no login, no paid tier. MIT licensed.
 
-Source + downloads: github.com/quietforkTsuruta0821/arcade
+Source + downloads: github.com/quietfork/arcade
 
 Demo GIF attached. Built this because I needed it. Feedback welcome, especially on the multi-window sync model.
 ```
@@ -98,7 +98,7 @@ Local PTY access without a daemon. A web version would need a backend server tal
 Windows + macOS Universal binaries in the release. MIT licensed. No telemetry. Linux on v1.x roadmap (codebase compiles but untested).
 
 Built this because I needed it. Source + downloads + technical write-up:
-github.com/quietforkTsuruta0821/arcade
+github.com/quietfork/arcade
 
 Happy to dig into any of the design choices in the comments.
 ```

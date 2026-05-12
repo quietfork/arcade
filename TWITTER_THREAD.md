@@ -70,7 +70,7 @@ Roadmap:
 • Future — team mode is being explored; the single-user app stays free forever
 
 Source + downloads:
-github.com/quietforkTsuruta0821/arcade
+github.com/quietfork/arcade
 
 ⭐ if it's useful — helps other Claude Code users find it.
 PRs welcome.
@@ -126,7 +126,7 @@ Skip: `#AI`, `#productivity`, `#dev` (oversaturated, no return).
 > Sessions only launch from projects you've explicitly registered, and the path is shown in the pane header. First launch shows a consent dialog. Per-project override available if you'd rather keep prompts on. Tried both defaults during dev — prompts kill the multi-pane workflow.
 
 ### "Open source?"
-> Yes, MIT. Full source: github.com/quietforkTsuruta0821/arcade. No telemetry, no login, no paid tier today.
+> Yes, MIT. Full source: github.com/quietfork/arcade. No telemetry, no login, no paid tier today.
 
 ### "Will you do X/Y feature?"
 > Open an issue on GitHub with the use case — easier to track and other folks can chime in. The roadmap is short and I'm trying to keep v1 small.

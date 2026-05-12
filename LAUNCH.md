@@ -24,7 +24,7 @@ A 90-minute launch needs 2 weeks of prep and 1 week of cleanup. Below is the sch
 - [ ] **Repo on GitHub**, public, MIT, README final, screenshots placed in `/assets/screenshots/`
 - [ ] **GitHub Discussions** enabled (Issues feels punitive for "I have a question"; Discussions invites it)
 - [ ] **Hunter contacted** (see [PRODUCTHUNT.md](PRODUCTHUNT.md)) and either committed or skipped (self-hunt is fine)
-- [ ] **X account** ready: avatar = `assets/logo/arcade-mark.svg → PNG 400×400`; banner = lockup + tagline; bio = "Maker of Arcade — multi-pane launcher for Claude Code. github.com/quietforkTsuruta0821/arcade"
+- [ ] **X account** ready: avatar = `assets/logo/arcade-mark.svg → PNG 400×400`; banner = lockup + tagline; bio = "Maker of Arcade — multi-pane launcher for Claude Code. github.com/quietfork/arcade"
 - [ ] **Demo video** recorded per [VIDEO_SCRIPT.md](VIDEO_SCRIPT.md), uploaded to YouTube (unlisted) + Loom (backup)
 - [ ] **Screenshots** captured per [README.md](README.md) placeholders, 1920×1080, PNG
 - [ ] **6 screenshots × PH cover** exported at 1270×760

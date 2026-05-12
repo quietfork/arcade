@@ -17,7 +17,7 @@ cd ~/dev/<project> && claude --dangeressly-skip-permissions  # typo every other 
 
 I tried tmux. I tried VS Code's terminal. I tried opening four Windows Terminal tabs. None of them gave me what I wanted, which was this: **a list of my projects on the left, a grid of running Claude sessions on the right, one click between them**.
 
-So I built it. The result is [Arcade](https://github.com/quietforkTsuruta0821/arcade) — a desktop launcher for parallel Claude Code sessions. It's open source (MIT), runs on Windows and macOS, and the binary is about 25 MB.
+So I built it. The result is [Arcade](https://github.com/quietfork/arcade) — a desktop launcher for parallel Claude Code sessions. It's open source (MIT), runs on Windows and macOS, and the binary is about 25 MB.
 
 This post is the technical story. I'll cover why I picked Wails, the three things I ripped out and rewrote during development, and a few subtleties of running a TUI under a virtual PTY that bit me harder than I expected.
 
@@ -183,7 +183,7 @@ Arcade is feature-complete for what I personally need. The roadmap (Linux build,
 
 If you run Claude Code across multiple projects, give it a try. If you don't, this post is hopefully useful as a reference for shipping Wails apps with PTYs, multi-window state, and a custom layout engine that doesn't fight the rendering library.
 
-**Repo**: [github.com/quietforkTsuruta0821/arcade](https://github.com/quietforkTsuruta0821/arcade)
+**Repo**: [github.com/quietfork/arcade](https://github.com/quietfork/arcade)
 **License**: MIT
 **Binaries**: Windows + macOS Universal on the Releases page
 

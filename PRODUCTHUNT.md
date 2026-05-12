@@ -51,7 +51,7 @@ A few design choices I'm happy about:
 
 What's not here yet: Linux build (codebase compiles, just untested), screen lock for sensitive sessions, command palette. All on the v1.x roadmap.
 
-Happy to answer anything. Source + downloads → github.com/quietforkTsuruta0821/arcade
+Happy to answer anything. Source + downloads → github.com/quietfork/arcade
 
 Thanks for hunting!
 ```
@@ -154,7 +154,7 @@ Product Hunt rankings move on **engagement velocity** in the first 4 hours. Focu
 > Best place is a GitHub issue (link in the description). Easier to track and other folks can chime in. The roadmap is intentionally short for v1, but I'm collecting requests for v1.1.
 
 ### "Show me the code"
-> github.com/quietforkTsuruta0821/arcade — all of it. There's also a write-up of the architecture decisions in DECISIONS.md.
+> github.com/quietfork/arcade — all of it. There's also a write-up of the architecture decisions in DECISIONS.md.
 
 ---
 

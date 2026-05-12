@@ -34,7 +34,7 @@
 | 12 | 63–69 | レイアウトメニューから `Save as...` → "Trading" と命名して保存。再起動 → "Trading" を選択 → 同じレイアウトで復元 | "Save named layouts. Reload them anytime." | `Named layouts. Persist forever.` |
 | 13 | 69–75 | 設定ダイアログを開いてフォント JetBrains Mono → IBM Plex Mono に変更。テーマ切替も一瞬見せる | "Fonts and themes. JSON in `~/.arcade/`." | `Yours to tune.` |
 | 14 | 75–83 | テックスタック スーパー画面: Wails / Go / xterm.js / React のロゴが順に表示。MIT バッジ | "Built with Wails, Go, and xterm.js. MIT licensed." | `Wails · Go · xterm.js · MIT` |
-| 15 | 83–90 | ロックアップロゴ → GitHub URL → ⭐ アイコン点滅 | "Arcade. github.com/quietforkTsuruta0821/arcade" | `github.com/quietforkTsuruta0821/arcade` |
+| 15 | 83–90 | ロックアップロゴ → GitHub URL → ⭐ アイコン点滅 | "Arcade. github.com/quietfork/arcade" | `github.com/quietfork/arcade` |
 
 ---
 

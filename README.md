@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/quietforkTsuruta0821/arcade/releases/latest"><img src="https://img.shields.io/github/v/release/quietforkTsuruta0821/arcade?style=flat-square" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/quietforkTsuruta0821/arcade?style=flat-square" alt="License: MIT"></a>
-  <a href="https://github.com/quietforkTsuruta0821/arcade/stargazers"><img src="https://img.shields.io/github/stars/quietforkTsuruta0821/arcade?style=flat-square" alt="GitHub stars"></a>
+  <a href="https://github.com/quietfork/arcade/releases/latest"><img src="https://img.shields.io/github/v/release/quietfork/arcade?style=flat-square" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/quietfork/arcade?style=flat-square" alt="License: MIT"></a>
+  <a href="https://github.com/quietfork/arcade/stargazers"><img src="https://img.shields.io/github/stars/quietfork/arcade?style=flat-square" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey?style=flat-square" alt="Platforms: Windows, macOS">
 </p>
 
@@ -63,13 +63,13 @@ It runs natively on Windows and macOS. The whole app is one binary plus a `~/.ar
 
 ### Windows
 
-1. Download `Arcade-Setup-vX.Y.Z.exe` from [Releases](https://github.com/quietforkTsuruta0821/arcade/releases/latest).
+1. Download `Arcade-Setup-vX.Y.Z.exe` from [Releases](https://github.com/quietfork/arcade/releases/latest).
 2. Run the installer. SmartScreen will warn you — click **More info → Run anyway**. The binary is unsigned for now (see [DECISIONS.md](DECISIONS.md)).
 3. Launch Arcade. Add a project. Click it. You're in.
 
 ### macOS
 
-1. Download `Arcade-vX.Y.Z-universal.dmg` from [Releases](https://github.com/quietforkTsuruta0821/arcade/releases/latest).
+1. Download `Arcade-vX.Y.Z-universal.dmg` from [Releases](https://github.com/quietfork/arcade/releases/latest).
 2. Open the DMG and drag **Arcade.app** to `/Applications`.
 3. First launch is blocked by Gatekeeper. Remove the quarantine flag once:
 
