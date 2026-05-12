@@ -56,9 +56,29 @@ jobs:
           cache: 'npm'
           cache-dependency-path: arcade/frontend/package-lock.json
 
-      - name: Ensure NSIS is installed
-        # NSIS is usually preinstalled on windows-latest runners. This is a safety net.
-        run: choco install nsis -y --no-progress
+      - name: Ensure NSIS is installed and on PATH
+        # NSIS is usually preinstalled on windows-latest runners, but its bin dir is not
+        # always on PATH. Detect, install if missing, and add the bin dir to GITHUB_PATH
+        # so that `wails build -nsis` can find makensis.exe.
+        run: |
+          $candidates = @(
+            "C:\Program Files (x86)\NSIS",
+            "C:\Program Files (x86)\NSIS\Bin",
+            "C:\Program Files\NSIS",
+            "C:\Program Files\NSIS\Bin"
+          )
+          $found = $candidates | Where-Object { Test-Path (Join-Path $_ "makensis.exe") } | Select-Object -First 1
+          if (-not $found) {
+            Write-Host "NSIS not found; installing via Chocolatey..."
+            choco install nsis -y --no-progress
+            $found = $candidates | Where-Object { Test-Path (Join-Path $_ "makensis.exe") } | Select-Object -First 1
+          }
+          if (-not $found) {
+            throw "makensis.exe still not found after install. Searched: $($candidates -join '; ')"
+          }
+          Write-Host "Found makensis.exe at: $found"
+          Add-Content -Path $env:GITHUB_PATH -Value $found
+          Write-Host "Added $found to GITHUB_PATH"
         working-directory: .
 
       - name: Install Wails CLI
